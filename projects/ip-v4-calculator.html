@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>JavaServer Pages (JSP) | IPv4 Calculator</title>
+        <meta name="description" content='Create a JavaServer Pages (JSP) IPv4 Calculator web application. See sample
+              code for some of the calculations, as well as a structure overview.'>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" href="../favicon.ico"
+              type="image/vnd.microsoft.icon">
+        <link rel="icon" type="image/icon" href="../favicon.ico">
+        <link rel="canonical" href="http://joshuaheagle.com/projects/ip-v4-calculator">
+        <link rel="stylesheet" href="../css/main.min.css">
+        <link rel="stylesheet" href="../assets/syntax-highlighter/prettify.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="../js/respond.min.js"></script>
+        <script>
+            (function(i, s, o, g, r, a, m) {
+                i['GoogleAnalyticsObject'] = r;
+                i[r] = i[r] ||
+                        function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                a.async = 1;
+                a.src = g;
+                m.parentNode.insertBefore(a, m)
+            })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+            ga('create', 'UA-45433115-1', 'joshuaheagle.com');
+            ga('send', 'pageview');
+        </script>
+        <!--[if gte IE 9]>
+        <style type="text/css">
+        .gradient {
+        filter: none;
+        }
+        </style>
+        <![endif]-->
+    </head>
+    <body>
+        <div class="left-side">
+            <input id="search" type="search" results="5" autosave="searches"
+                   placeholder="Find projects. . .">
+            <button id="searchBtn" type="button">
+                Search
+            </button>
+            <div class="pagination"></div>
+            <div class="side-results"></div>
+            <div class="pagination"></div>
+        </div>
+        <div class="right-side"></div>
+        <div class="container">
+            <header>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/jh-logo.png" alt="Joshua Heagle"></a>
+                <h1>Calculate IPv4 addresses in JSP</h1>
+                <h2>Let's help each other network.</h2>
+                <ul class="menu">
+                    <li>
+                        <a href="/">Portfolio Home</a>
+                    </li>
+                    <li>
+                        <a href="/about">About Joshua</a>
+                    </li>
+                    <li class="current-page">
+                        <a href="/projects/">All Projects</a>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#">Just Some Programming</a>
+                        <ul>
+                            <li>
+                                <a href="http://jspprojects.com/" target="_blank">Home</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/articles" target="_blank">Articles</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/blogs" target="_blank">Blogs</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/forums" target="_blank">Forums</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </header>
+            <div class="contents">
+                <div class="overview">
+                    <h3>Time to subnet.</h3>
+                    <h4><a href="#application" title="View IPv4 Calculator">Go to Application</a></h4>
+                    <p class="by-line">
+                        By: <a href="mailto:contact@joshuaheagle.com">Joshua Heagle</a>
+                    </p>
+                    <div>
+                        <p>
+                            Using Java Server Pages (JSP) I created this web application in a Web Application Programming course. The professor
+                            helped us enforce a good design formula using a Model, View, and Controller (MVC). The view layer is composed of a XHTML
+                            file combined with CSS to create the user interface.
+                        </p>
+                        <p>
+                            The controller is a Java file which responds to requests from the view layer by communicating to the Model. The controller
+                            acts as an interface between the view and the model, or the visual front-end and functional back-end.
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            Finally, all the usable functions are within the model. The model is a JavaBeans file which holds the object which does the work
+                            requested through the controller. The major usability of the model is that it has set and get methods which can be accessed through
+                            the controller in order to enact functionality of the model.
+                        </p>
+                        <p>
+                            I have added some of the more logic-based code below to demonstrate how some of the calculations were made. I have chosen bitwise
+                            operations because of speed as well as logic actually being at a bit-level.
+                        </p>
+                    </div>
+                    <div class="codesnip">
+                        <a class="quick-link" href="#application" title="View Java Class Browser">Go to Application</a>
+                        <pre class="prettyprint linenums">
+    /**
+     * Receives the mask as an array of integers representing a four octet IP
+     * address. Another array is created to be the inverse of the mask. This
+     * inverse is the wildcard mask which is then returned.
+     * 
+     * @param mask
+     * @return the wildcard mask
+     */
+    private Integer[] getWildcard(Integer[] mask) {
+        Integer[] wildcard = new Integer[4];
+        for (int i = 0; i &lt; mask.length; i++)
+            wildcard[i] = ~mask[i] &amp; 0xff;
+        /* for each mask octet mask it with 255 (0xff) and add the binary 
+         * inverse to the wildcard mask */
+        return wildcard;
+    }
+
+    /**
+     * Receives the IP address and the wildcard mask (both as integer arrays) 
+     * representing a four octet IP address. A bitwise OR is used with the IP 
+     * and wildcard mask to identify the broadcast address.
+     * 
+     * @param ip
+     * @param wildcard
+     * @return the broadcast IP
+     */
+    private Integer[] getBroadcast(Integer[] ip, Integer[] wildcard) {
+        Integer[] broadcast = new Integer[4];
+        for (int i = 0; i &lt; ip.length; i++)
+            broadcast[i] = ip[i] | wildcard[i];
+        // use of bitwise OR on each octet to filter out the broadcast IP.
+        return broadcast;
+    }
+
+    /**
+     * Converts a prefix into a subnet mask for IP v4. The subnet mask is 
+     * returned as an Integer array of four octets.
+     * @param prefix
+     * @return the subnet mask IP
+     */
+    private Integer[] getMask(int prefix) {
+        Integer[] maskIp = {0, 0, 0, 0};
+        int mask = prefix;
+        for (int i = 0; i &lt;= maskIp.length; i++) {
+            mask -= 8; // track octets that need to be in the mask.
+            if (mask &gt;= 0)
+                maskIp[i] = 255; // for each full octet, set to all ones (255)
+            else {
+                int octet = 0;
+                mask *= -1; // if it is not a full octet, convert mask bits
+                for (int j = 7; j &gt;= mask; j--)
+                    octet += (int) Math.pow(2.0, (double) j);
+                maskIp[i] = octet;
+                return maskIp;
+                /* entering this condition means there are no more mask bits, 
+                 * so the loop should break, and the subnet mask is returned */
+            }
+        }
+        return maskIp;
+    }
+
+    /**
+     * Calculate the subnet IP address with the IP address and the subnet mask.
+     * Using a bitwise AND the IP address and subnet mask are compared and an 
+     * Integer array representing a four octet IP address is returned.
+     * 
+     * @param ip
+     * @param mask
+     * @return the subnet IP address
+     */
+    private Integer[] getSubnet(Integer[] ip, Integer[] mask) {
+        Integer[] subnetIp = new Integer[4];
+        for (int i = 0; i &lt; ip.length; i++)
+            subnetIp[i] = ip[i] &amp; mask[i];
+        // compare the IP and mask with bitwise AND
+        return subnetIp;
+    }
+}
+                        </pre>
+                    </div>
+                </div>
+                <a class="content-link" id="application"></a>
+                <div class="application">
+                    <h4><a href="http://myjsp.jspprojects.com/ipv4calculator/faces/index.xhtml" target="_blank" title="JSP IPv4 Calculator">View in a new window</a></h4>
+                    <iframe src="http://myjsp.jspprojects.com/ipv4calculator/faces/index.xhtml" width="97%" height="670px"></iframe>
+                    <a class="iframe" href="http://myjsp.jspprojects.com/ipv4calculator/faces/index.xhtml" target="_blank" title="JSP IPv4 Calculator"><img src="../img/ip-v4-calc.jpg" alt="IP v4 Calculator"></a>
+                </div>
+
+            </div>
+            <footer>
+                <div class="social">
+                    <!-- LinkedIn Badge START -->
+                    <a href="http://ca.linkedin.com/in/joshuaheagle" target="_BLANK"
+                       title="Join Joshua's network on LinkedIn"><img src="../img/linkedin-icon.png"
+                                                                   alt="Professional profile of Joshua Heagle"
+                                                                   title="Network with the programmer on LinkedIn"/> </a>
+                    <!-- LinkedIn Badge END -->
+                    &nbsp;
+                    <!-- Facebook Badge START -->
+                    <a href="https://www.facebook.com/joshua.heagle.5" target="_BLANK"
+                       title="Friend Joshua on Facebook"><img src="../img/facebook-icon.png"
+                                                           alt="Developer profile of Joshua Heagle"
+                                                           title="Friend the developer on Facebook"/> </a>
+                    <!-- Facebook Badge END -->
+                    &nbsp;
+                    <!-- Twitter Badge START -->
+                    <a href="https://twitter.com/JoshuaHeagle" target="_BLANK"
+                       title="Follow Joshua on Twitter"><img src="../img/twitter-icon.png"
+                                                          alt="Joshua Heagle tweets programming"
+                                                          title="Follow the feed on programming"/> </a>
+                    <!-- Twitter Badge END -->
+                    &nbsp;
+                    <!-- GitHub Badge START -->
+                    <a href="https://github.com/jheagle" target="_BLANK"
+                       title="Visit Joshua's GitHub page"><img src="../img/github-icon.png"
+                                                            alt="Developer projects of Joshua Heagle"
+                                                            title="Full working projects on GitHub"/> </a>
+                    <!-- GitHub Badge END -->
+                    &nbsp;
+                    <!-- Google+ Badge START -->
+                    <a
+                        href="https://plus.google.com/u/0/115860777965756793038?rel=author"
+                        rel="author" target="_BLANK" title="View Joshua on Google+"><img
+                            src="../img/googleplus-icon.png" alt="Programmer Joshua Heagle"
+                            title="Developer profile Google+"/> </a>
+                    <!-- Google+ Badge END -->
+                </div>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/plaque.png" alt="Joshua Heagle"></a>
+            </footer>
+        </div>
+        <script type="text/javascript" src="../js/main.min.js"></script>
+        <script src="../assets/syntax-highlighter/prettify.js"></script>
+        <script type="text/javascript" src="../js/search-side.min.js"></script>
+        <script>
+            prettyPrint();
+        </script>
+    </body>
+</html>

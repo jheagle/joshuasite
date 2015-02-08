@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!--[if lt IE 9]>
+        <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>JavaServer Faces (JSF/JSP) | Java Class Browser</title>
+        <meta name="description" content='Create a JavaServer Faces (JSF/JSP) Java Class Browser web application. See sample
+              code for some of the logig, as well as a structure overview.'>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" href="../favicon.ico"
+              type="image/vnd.microsoft.icon">
+        <link rel="icon" type="image/icon" href="../favicon.ico">
+        <link rel="canonical" href="http://joshuaheagle.com/projects/java-class-browser">
+        <link rel="stylesheet" href="../css/main.min.css">
+        <link rel="stylesheet" href="../assets/syntax-highlighter/prettify.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="../js/respond.min.js"></script>
+        <script>
+            (function(i, s, o, g, r, a, m) {
+                i['GoogleAnalyticsObject'] = r;
+                i[r] = i[r] ||
+                        function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                a.async = 1;
+                a.src = g;
+                m.parentNode.insertBefore(a, m)
+            })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+            ga('create', 'UA-45433115-1', 'joshuaheagle.com');
+            ga('send', 'pageview');
+        </script>
+        <!--[if gte IE 9]>
+        <style type="text/css">
+        .gradient {
+        filter: none;
+        }
+        </style>
+        <![endif]-->
+    </head>
+    <body>
+        <div class="left-side">
+            <input id="search" type="search" results="5" autosave="searches"
+                   placeholder="Find projects. . .">
+            <button id="searchBtn" type="button">
+                Search
+            </button>
+            <div class="pagination"></div>
+            <div class="side-results"></div>
+            <div class="pagination"></div>
+        </div>
+        <div class="right-side"></div>
+        <div class="container">
+            <header>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/jh-logo.png" alt="Joshua Heagle"></a>
+                <h1>Look-up Java Classes using JSF</h1>
+                <h2>What class of programmer am I?</h2>
+                <ul class="menu">
+                    <li>
+                        <a href="/">Portfolio Home</a>
+                    </li>
+                    <li>
+                        <a href="/about">About Joshua</a>
+                    </li>
+                    <li class="current-page">
+                        <a href="/projects/">All Projects</a>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#">Just Some Programming</a>
+                        <ul>
+                            <li>
+                                <a href="http://jspprojects.com/" target="_blank">Home</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/articles" target="_blank">Articles</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/blogs" target="_blank">Blogs</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/forums" target="_blank">Forums</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </header>
+            <div class="contents">
+                <div class="overview">
+                    <h3>In the beginning there was Object</h3>
+                    <h4><a href="#application" title="View Java Class Browser">Go to Application</a></h4>
+                    <p class="by-line">
+                        By: <a href="mailto:contact@joshuaheagle.com">Joshua Heagle</a>
+                    </p>
+                    <div>
+                        <p>
+                            The Java Class Browser was written in Java Server Pages with Faces and using PrimeFaces.
+                            This was a fairly complex project which absorbed a great deal of my time. First, starting
+                            with the View, I did my best to exact the professors specifications and screen shots.
+                        </p>
+                        <p>
+                            After completing the View, I proceeded with the Controller for responding to actions on the
+                            View. The controller was somewhat easy, but required modification over time as I built the Model.
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            My biggest frustration was learning reflection in order to have Java inspect itself and gather
+                            information about Java Classes. As well, I was disappointed by the fact that Packages in Java
+                            are unaware of their associated classes. Of course it makes sense, but made it challenging.
+                        </p>
+                        <p>
+                            I successfully conquered this project by creating multiple helper classes that produced all the
+                            results I required to effectively obtain and present the Class details - I love Object-Oriented.
+                        </p>
+                    </div>
+                    <div class="codesnip">
+                        <a class="quick-link" href="#application" title="View Java Class Browser">Go to Application</a>
+                        <pre class="prettyprint linenums">
+/**
+ * @author Joshua Heagle
+ * @version 1.0
+ */
+public class ClassBrowserModel implements Serializable {
+
+    private Map&lt;TreeNode, Class&gt; hierarchyMap; // store a hierarchy of nodes resulting from searched classes
+    private List&lt;PackageContent&gt; packageList; // store all packages obtained as their wrapper class of PackageContent
+    private List&lt;MemberItem&gt; memberList; // store the list of members for the current class
+    private ClassBrowserOptions options; // reference to the filter options for filtering class attributes
+    
+    /**
+     * ClassBrowserModel constructor initiates all values
+     */
+    public ClassBrowserModel() {
+        super();
+        hierarchyMap = new LinkedHashMap&lt;TreeNode, Class&gt;();
+        options = new ClassBrowserOptions();
+        root = new DefaultTreeNode("Root", null);
+        createPackageList();        /* Set defalut class to Object */
+        selectedPackage = searchPackage(Object.class.getPackage().getName());
+        selectedClass = new ClassItem(Object.class);
+        Class[] classes = getClassHierarchy(selectedClass.getCs());
+        selectedNode = searchTreeNode(root, createHierarchyTree(classes).getSimpleName());
+        selectedNode.setSelected(true);
+        createMemberList();
+        createDeclaration(selectedClass.getCs());
+    }
+    
+    /* below here would be the getters and setters for interacting with this model */
+    
+    /**
+     * Change the current node based on user interaction
+     * 
+     * @param selectedNode 
+     */
+    public void setSelectedNode(TreeNode selectedNode) {
+        classSelected = true;
+        this.selectedNode = selectedNode;
+        try {
+            String className = hierarchyMap.get(selectedNode).getName();
+            this.selectedClass = searchClass(className);
+            this.selectedPackage = searchPackage(getPackageName(className));
+        } catch (ClassNotFoundException ex) {
+        }
+        this.selectedMember = null;
+        this.selectedNode.setSelected(classSelected);
+    }
+
+    /**
+     * Based on the class that is submitted, all of the parent classes are
+     * identified and returned as an array
+     * 
+     * @param cs
+     * @return Class[]
+     */
+    private Class[] getClassHierarchy(Class cs) {
+        List&lt;Class&gt; classList = new ArrayList&lt;Class&gt;();
+        while (cs != null) {
+            classList.add(cs);
+            cs = cs.getSuperclass();
+        }
+        Class[] classes = classList.toArray(new Class[classList.size()]);
+        return classes;
+    }
+
+    /**
+     * Convert any Object array to a space separated string.
+     * 
+     * @param array
+     * @return String
+     */
+    private String getArrayContents(Object[] array) {
+        String contents = "";
+        boolean isFirst = true;
+        for (Object obj : array) {
+            if (!isFirst)
+                contents = contents.concat(" ").concat(obj.toString());
+            else
+                contents = obj.toString();
+            isFirst = false;
+        }
+        return contents;
+    }
+
+    /**
+     * Retrieve fully qualified object name as a string and return the fully
+     * qualified package name
+     * 
+     * @param object
+     * @return String
+     * @throws StringIndexOutOfBoundsException 
+     */
+    private String getPackageName(String object) throws StringIndexOutOfBoundsException {
+        String[] names = object.split("\\.");
+        return object.substring(0, (object.length() - names[names.length - 1].length()) - 1);
+    }
+
+    /**
+     * Retrieve the total number of classes listed in the hierarchy tree by
+     * recursively counting each branch from a given root.
+     * 
+     * @param root
+     * @return int
+     */
+    private int countClasses(TreeNode root) {
+        int count = root.getChildCount();
+        List&lt;TreeNode&gt; children = root.getChildren();
+        for (TreeNode tn : children)
+            count += countClasses(tn);
+        return count;
+    }
+
+    /**
+     * 
+     * @param obj 
+     */
+    private void createDeclaration(Object obj) {
+        if (obj instanceof Class)
+            declaration = new ClassItem((Class) obj).getDeclaration();
+        else
+            declaration = new MemberItem((Member) obj).getDeclaration();
+    }
+
+    /**
+     * Build the hierarchy Tree based on the array of classes provided,
+     * the order of this array is crucial. The class returned is the selected leaf node.
+     * 
+     * @param classes
+     * @return Class
+     */
+    private Class createHierarchyTree(Class[] classes) {
+        List&lt;TreeNode&gt; rootChildren = root.getChildren();
+        TreeNode node;
+        if (rootChildren.size() &lt; 1) {
+            node = new DefaultTreeNode(classes[classes.length - 1].getSimpleName(), root);
+            hierarchyMap.put(node, classes[classes.length - 1]);
+        } else
+            node = rootChildren.get(0);
+        node.setExpanded(true);
+        for (int i = (classes.length - 2); i &gt;= 0; i--)
+            if (!hierarchyMap.containsValue(classes[i])) {
+                node = new DefaultTreeNode(classes[i].getSimpleName(), node);
+                hierarchyMap.put(node, classes[i]);
+                node.setExpanded(true);
+            }
+        setNumberOfClasses(countClasses(root));
+        return classes[0];
+    }
+
+    /**
+     * Build the member list from all the gathered information and set the
+     * memberList. This function takes into account the current filters which
+     * have been sent, and only appends the desired members.
+     */
+    private void createMemberList() {
+        numberOfMembers = 0;
+        Field[] fieldArray = selectedClass.getCs().getDeclaredFields();
+        Constructor[] constArray = selectedClass.getCs().getDeclaredConstructors();
+        Method[] methArray = selectedClass.getCs().getDeclaredMethods();
+        Arrays.sort(fieldArray, new ObjectComparator());
+        Arrays.sort(constArray, new ObjectComparator());
+        Arrays.sort(methArray, new ObjectComparator());
+        memberList = new ArrayList();
+        /* check filters and perform applicable actions */
+        if (options.getFilter() == Filters.ALL || options.getFilter() == Filters.FIELDS)
+            for (Field f : fieldArray)
+                createMemberList(f);
+        if (options.getFilter() == Filters.ALL)
+            if (fieldArray.length != 0) // add empty space for display purposes
+                memberList.add(new MemberItem(null));
+        if (options.getFilter() == Filters.ALL || options.getFilter() == Filters.CONSTRUCTORS)
+            for (Constructor c : constArray)
+                createMemberList(c);
+        if (options.getFilter() == Filters.ALL)
+            if (constArray.length != 0) // add empty space for display purposes
+                memberList.add(new MemberItem(null));
+        if (options.getFilter() == Filters.ALL || options.getFilter() == Filters.METHODS)
+            for (Method m : methArray)
+                createMemberList(m);
+    }
+
+    /**
+     * This method works together with the previous default method of the same name.
+     * For each member this method is called to further filter the results based
+     * on the set options. If the member is able to pass each test, then a new
+     * member is created and added to the memberList. The member counter is then
+     * incremented.
+     * 
+     * @param mem 
+     */
+    private void createMemberList(Member mem) {
+        if (!options.isIncInstance() &amp;&amp; new MemberItem(mem).isInstance)
+            return;
+       
+					&ordm;&nbsp;&nbsp;&nbsp;&ordm;&nbsp;&nbsp;&nbsp;&ordm;&nbsp;&nbsp;&nbsp;&ordm;
+       
+        if (!options.isIncVolatile() &amp;&amp; new MemberItem(mem).isVolatile)
+            return;
+        memberList.add(new MemberItem(mem));
+        numberOfMembers++;
+    }
+
+    /**
+     * Retrieve all packages and sort alphabetically then generate the
+     * packageList once they have been added to the wrapper class.
+     */
+    private void createPackageList() {
+        Package[] pkgArray = Package.getPackages();
+        Arrays.sort(pkgArray, new ObjectComparator());
+        packageList = new ArrayList();
+        for (Package p : pkgArray)
+            packageList.add(new PackageContent(p));
+    }
+
+    /**
+     * Attempt to locate the requested class and return success or fail.
+     * 
+     * @param object
+     * @return boolean
+     */
+    public boolean doSearch(String object) {
+        try {
+            ClassItem ci = searchClass(object);
+            if (ci == null)
+                return false;
+            else {
+                selectedClass = ci;
+                return true;
+            }
+        } catch (ClassNotFoundException ex) {
+            return false;
+        } catch (NullPointerException ex) {
+            return false;
+        } catch (StringIndexOutOfBoundsException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * This method is called by doSearch and attempts to locate a class, if it
+     * is found it returns a ClassItem, otherwise the response is null.
+     * 
+     * @param className
+     * @return ClassItem
+     * @throws ClassNotFoundException 
+     */
+    private ClassItem searchClass(String className) throws ClassNotFoundException {
+        PackageContent pkg = searchPackage(getPackageName(className));
+        selectedPackage = pkg;
+        return new ClassItem(pkg.binarySearch(className));
+    }
+
+    /**
+     * Attempt to find and return a member, if it is not found return null.
+     * 
+     * @param member
+     * @return MemberItem
+     */
+    public MemberItem searchMember(String member) {
+        for (MemberItem mi : memberList)
+            if (mi.getName().equals(member))
+                return mi;
+        return null;
+    }
+
+    /**
+     * Locate and return the requested package.
+     * 
+     * @param pkgName
+     * @return PackageContent
+     */
+    private PackageContent searchPackage(String pkgName) {
+        PackageContent[] packageArray = packageList.toArray(new PackageContent[packageList.size()]);
+        int i = Arrays.binarySearch(packageArray, new PackageContent(Package.getPackage(pkgName)), new ObjectComparator());
+        return packageArray[i];
+    }
+
+    /**
+     * Recursively search for a node based on its value and the given root.
+     * 
+     * @param root
+     * @param value
+     * @return TreeNode
+     */
+    private TreeNode searchTreeNode(TreeNode root, String value) {
+        List&lt;TreeNode&gt; children = root.getChildren();
+        for (TreeNode tn : children)
+            if (((String) tn.getData()).equals(value))
+                return tn;
+        if (children.size() &gt; 0)
+            for (TreeNode tn : children) {
+                TreeNode node = searchTreeNode(tn, value);
+                if (((String) node.getData()).equals(value))
+                    return node;
+            }
+        return root;
+    }
+    
+    /**
+     * @author Joshua Heagle
+     * @version 1.0
+     * 
+     * A wrapper class for the class Class which provides utilities
+     * for obtaining more results for class analysis.
+     */
+    public class ClassItem implements Serializable {
+
+        private Class cs; // The class the wrapper represents
+
+        private ClassItem(Class c) {
+            cs = c;
+        }
+
+        public Class getCs() {
+            return cs;
+        }
+        
+        /*
+         * Create the declaration for this class.
+         */
+        public String getDeclaration() {
+            String extended = (!cs.equals(Object.class)) ? "extends " + cs.getSuperclass().getName() : "";
+            Class[] interfaces = cs.getInterfaces();
+            Arrays.sort(interfaces, new ObjectComparator());
+            String implemented = (interfaces.length &gt; 0) ? "implements " + arrayToString(interfaces) : "";
+            return String.format("%s class %s %s %s", selectedClass.getModifiers(), selectedClass.getSimpleName(), extended, implemented);
+        }
+
+        public String getModifiers() {
+            return ModifierItem.getModifiers(getCs());
+        }
+
+        /**
+         * Convert an array of classes to a comma separated string.
+         * 
+         * @param array
+         * @return String
+         */
+        private String arrayToString(Class[] array) {
+            String contents = "";
+            boolean isFirst = true;
+            for (Class obj : array) {
+                if (!isFirst)
+                    contents = contents.concat(", ").concat(obj.getName());
+                else
+                    contents = obj.getName();
+                isFirst = false;
+            }
+            return contents;
+        }
+
+        /* The below classes reflect the classes of class Class through this wrapper class */
+        @Override
+        public String toString() {
+            return cs.toString();
+        }
+
+        public String getName() {
+            return cs.getName();
+        }
+
+        public String getCanonicalName() {
+            return cs.getCanonicalName();
+        }
+
+        public String getSimpleName() {
+            return cs.getSimpleName();
+        }
+    }
+    
+    /**
+     * @author Joshua Heagle
+     * @version 1.0
+     * 
+     * A wrapper class for class Member to add utilities for storing members 
+     * with characteristics that can be analysed and produce a string representation.
+     */
+    public class MemberItem implements Serializable {
+
+        private Member member = null;
+        private boolean isInstance;
+        private boolean isStatic;
+        private boolean isDefault;
+        private boolean isProtected;
+        private boolean isPrivate;
+        private boolean isPublic;
+        private boolean isAbstract;
+        private boolean isSynchronized;
+        private boolean isFinal;
+        private boolean isThrows;
+        private boolean isNative;
+        private boolean isTransient;
+        private boolean isStrict;
+        private boolean isVolatile;
+
+        private MemberItem(Member member) {
+            if (member != null)
+                this.member = member;
+            updateIdentity();
+        }
+
+		/* below are the accessors for all of the fields */
+        public boolean isIsInstance() {
+            return isInstance;
+        }
+        
+					&ordm;&nbsp;&nbsp;&nbsp;&ordm;&nbsp;&nbsp;&nbsp;&ordm;&nbsp;&nbsp;&nbsp;&ordm;      
+
+        public boolean isIsVolatile() {
+            return isVolatile;
+        }
+
+        /**
+         * Build a declaration based on this member.
+         * 
+         * @return String
+         */
+        public String getDeclaration() {
+            /* If null, display empty string, this occures when a null
+             * member is used for visual purposes */
+            if (member == null)
+                return "";
+            String type = (member instanceof Field) ? ((Field) member).getType().getSimpleName() : (member instanceof Method) ? ((Method) member).getReturnType().getSimpleName() : "";
+            if (member instanceof Field)
+                return String.format("%s %s %s", selectedMember.getModifiers(), type, selectedMember.getDeclaredName());
+            Class[] exceptions = (member instanceof Constructor) ? ((Constructor) member).getExceptionTypes() : ((Method) member).getExceptionTypes();
+            String throwing = (exceptions.length &gt; 0) ? "throws " + arrayToString(exceptions) : "";
+            return String.format("%s %s %s %s", selectedMember.getModifiers(), type, selectedMember.getDeclaredName(), throwing);
+        }
+
+        /**
+         * Format the declared name of this member.
+         * 
+         * @return String
+         */
+        public String getDeclaredName() {
+            String name = member instanceof Constructor ? getSimpleName(member.getName()) : member.getName();
+            Class[] params = member instanceof Field ? null : member instanceof Constructor ? ((Constructor) member).getParameterTypes() : ((Method) member).getParameterTypes();
+            return String.format("%s", this.member instanceof Field ? name : name + " (" + ((params.length &gt; 0) ? " " + arrayToString(params) + " " : " ") + ")");
+        }
+
+        public String getModifiers() {
+            return ModifierItem.getModifiers(getMember());
+        }
+
+        /**
+         * Reflect the same method of this member, adding some more information
+         * if member is not a field.
+         * 
+         * @return String
+         */
+        public String getName() {
+            /* If null, display line break, this occures when a null
+             * member is used for visual purposes */
+            if (member == null)
+                return "&amp;lt;br/&amp;gt;";
+            String name = member instanceof Constructor ? getSimpleName(member.getName()) : member.getName();
+            Class[] params = member instanceof Field ? null : member instanceof Constructor ? ((Constructor) member).getParameterTypes() : ((Method) member).getParameterTypes();
+            return String.format("%s", this.member instanceof Field ? name : name + "(" + (params.length &gt; 0 ? " " + arrayToString(params) + " " : " ") + ")");
+        }
+
+        /**
+         * Converts names of members that are constructors to a simple name format.
+         * 
+         * @param object
+         * @return String
+         */
+        private String getSimpleName(String object) {
+            String[] names = object.split("\\.");
+            return names[names.length - 1];
+        }
+
+        /**
+         * Convert an array of classes to a comma separated string.
+         * 
+         * @param array
+         * @return String
+         */
+        private String arrayToString(Class[] array) {
+            String contents = "";
+            boolean isFirst = true;
+            for (Class obj : array) {
+                if (!isFirst)
+                    contents = contents.concat(", ").concat(obj.getSimpleName());
+                else
+                    contents = obj.getSimpleName();
+                isFirst = false;
+            }
+            return contents;
+        }
+
+        /**
+         * Set all the fields of this class to correspond to information of this member.
+         */
+        private void updateIdentity() {
+            if (member == null)
+                return;
+            String s = getModifiers();
+            isPublic = s.contains("public");
+            isProtected = s.contains("protected");
+            isPrivate = s.contains("private");
+            isDefault = !isPublic &amp;&amp; !isProtected &amp;&amp; !isPrivate;
+            isAbstract = s.contains("abstract");
+            isStatic = s.contains("static");
+            isInstance = !isStatic &amp;&amp; !(member instanceof Constructor);
+            isFinal = s.contains("final");
+            isTransient = s.contains("transient");
+            isVolatile = s.contains("volatile");
+            isSynchronized = s.contains("synchronized");
+            isNative = s.contains("native");
+            isStrict = s.contains("strict");
+            isThrows = member instanceof Constructor ? ((Constructor) member).getExceptionTypes().length &gt; 0 : member instanceof Method ? ((Method) member).getExceptionTypes().length &gt; 0 : false;
+        }
+
+        /**
+         * A reflection of the member toString method.
+         * 
+         * @return String
+         */
+        @Override
+        public String toString() {
+            /* If null, display line break, this occures when a null
+             * member is used for visual purposes */
+            if (member == null)
+                return "&amp;lt;br/&amp;gt;";
+            return member.toString();
+        }
+    }
+    
+    /**
+     * @author Joshua Heagle
+     * @version 1.0
+     * 
+     * A helper class for obtaining a string of modifiers.
+     */
+    public static class ModifierItem implements Serializable {
+
+        /**
+         * Disallow instances of this class.
+         */
+        private void ModifierItem() {
+        }
+
+        /**
+         * Retrieve modifiers as string regardless of type.
+         * 
+         * @param obj
+         * @return String
+         */
+        public static String getModifiers(Object obj) {
+            return (obj instanceof Class) ? getClassModifiers((Class) obj) : getMemberModifiers((Member) obj);
+        }
+
+        /**
+         * Retrieve modifiers for class.
+         * 
+         * @param obj
+         * @return Sting
+         */
+        private static String getClassModifiers(Class obj) {
+            String modifiers = null;
+            if (Modifier.isPublic(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "public" : modifiers.concat(" public");
+            if (Modifier.isProtected(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "protected" : modifiers.concat(" protected");
+            if (Modifier.isPrivate(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "private" : modifiers.concat(" private");
+            if (Modifier.isAbstract(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "abstract" : modifiers.concat(" abstract");
+            if (Modifier.isStatic(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "static" : modifiers.concat(" static");
+            if (Modifier.isFinal(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "final" : modifiers.concat(" final");
+            if (Modifier.isTransient(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "transient" : modifiers.concat(" transient");
+            if (Modifier.isVolatile(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "volatile" : modifiers.concat(" volatile");
+            if (Modifier.isSynchronized(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "synchronized" : modifiers.concat(" synchronized");
+            if (Modifier.isNative(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "native" : modifiers.concat(" native");
+            if (Modifier.isStrict(obj.getModifiers()))
+                modifiers = (modifiers == null) ? "strict" : modifiers.concat(" strict");
+            return modifiers;
+        }
+
+        /**
+         * Retrieve modifiers for member.
+         * 
+         * @param obj
+         * @return Sting
+         */
+        private static String getMemberModifiers(Member obj) {
+            /* repeat of the getMemberModifiers for Class obj */
+        }
+    }
+
+    /**
+     * @author Joshua Heagle
+     * @version 1.0
+     * 
+     * A wrapper class for class Package to add utilities for storing and retrieving 
+     * characteristics of a package as well as storing classes contained within the package
+     * 
+     * NOTE: I developed this class out of rebellion because of the frustration
+     * in associating classes with packages in Java, while classes can tell you
+     * if they belong to a class, you cannot request for a list of classes within a package.
+     * This class creates an internal List of classes as they are discovered. I have since
+     * noticed performance issues, possibly related to how this class works, but still
+     * insist that a future improvement would maintain a string array instead of the
+     * current object array to improve package acknowledgement of its
+     * associated classes.
+     */
+    public class PackageContent implements Serializable {
+
+        private List&lt;ClassItem&gt; items;
+        private Package pkg;
+
+        private PackageContent(Package p) {
+            pkg = p;
+            items = new ArrayList();
+        }
+
+        private PackageContent(Package p, String c) throws ClassNotFoundException {
+            pkg = p;
+            items = new ArrayList&lt;ClassItem&gt;();
+            this.add(Class.forName(c));
+        }
+
+        private PackageContent(Package p, String[] cs) throws ClassNotFoundException {
+            pkg = p;
+            items = new ArrayList();
+            Arrays.sort(cs);
+            for (String c : cs)
+                this.add(Class.forName(c));
+        }
+
+        public List&lt;ClassItem&gt; getItems() {
+            return items;
+        }
+
+        public int getNumberOfClassItems() {
+            return items.size();
+        }
+
+        public Package getPkg() {
+            return pkg;
+        }
+
+        private void add(Class c) {
+            items.add(new ClassItem(c));
+            if (items.size() &gt; 1)
+                this.sort();
+        }
+
+        /**
+         * Perform a search for the class based on name. Check if this class
+         * exists as part of the package content. Return the class if it does,
+         * otherwise add it to the package and return the class anyway.
+         * 
+         * NOTE: This method could be modified or bypassed to increase
+         * efficiency, it is only because of my stubbornness that I have
+         * added it - see the note for this Class.
+         * 
+         * @param cs
+         * @return Class
+         * @throws ClassNotFoundException 
+         */
+        public Class binarySearch(String cs) throws ClassNotFoundException {
+            Class c = Class.forName(cs); // Only truly essential component of this method
+            /* Below, other than the return, are processes that could be removed to boost efficiency */
+            int i = Arrays.binarySearch(items.toArray(new ClassItem[items.size()]), new ClassItem(c), new ObjectComparator());
+            if (i &gt; 0)
+                return items.get(i).getCs();
+            if (c != null)
+                add(c);
+            return c; // Don't forget to return the class
+        }
+
+        private void sort() {
+            Arrays.sort(items.toArray(new ClassItem[items.size()]), new ObjectComparator());
+        }
+
+        @Override
+        public String toString() {
+            return pkg.toString();
+        }
+
+        public String getName() {
+            return pkg.getName();
+        }
+    }
+
+    /**
+     * @author Joshua Heagle
+     * @version 1.0
+     * 
+     * A helper class for comparing all of the same type Java objects using the
+     * Comparator. All comparisons are made on strings which are often obtained
+     * from the toString().
+     */
+    protected class ObjectComparator implements Comparator {
+
+        /**
+         * Convert an array of classes to a comma separated string.
+         * 
+         * @param array
+         * @return String
+         */
+        private String arrayToString(Class[] array) {
+            String contents = "";
+            boolean isFirst = true;
+            for (Class obj : array) {
+                if (!isFirst)
+                    contents = contents.concat(", ").concat(obj.getSimpleName());
+                else
+                    contents = obj.getSimpleName();
+                isFirst = false;
+            }
+            return contents;
+        }
+
+        /**
+         * Compare two similar objects as strings then return their value
+         * to indicate higher or lower. Handles special requirements for
+         * displaying class members.
+         * 
+         * @param o1
+         * @param o2
+         * @return int
+         */
+        @Override
+        public int compare(Object o1, Object o2) {
+
+            String name1 = o1.toString();
+            String name2 = o2.toString();
+
+            if (o1 instanceof Class &amp;&amp; o2 instanceof Class) {
+                name1 = ((Class) o1).getSimpleName();
+                name2 = ((Class) o2).getSimpleName();
+            }
+
+            /* Compare each member by its name, if they are the same, then they
+             * must be a constructor or a method. Sort overloaded constructors
+             * from least to greatest number of parameters. */
+            if (o1 instanceof Member &amp;&amp; o2 instanceof Member) {
+                String[] names1 = ((Member) o1).getName().split("\\.");
+                String[] names2 = ((Member) o2).getName().split("\\.");
+                name1 = names1[names1.length - 1];
+                name2 = names2[names2.length - 1];
+                if (name1.equals(name2))
+                    if (o1 instanceof Constructor &amp;&amp; o2 instanceof Constructor) {
+                        Class[] params1 = ((Constructor) o1).getParameterTypes();
+                        Class[] params2 = ((Constructor) o2).getParameterTypes();
+                        if (params1.length == params2.length) {
+                            name1 += arrayToString(params1);
+                            name2 += arrayToString(params2);
+                        } else
+                            return params1.length - params2.length;
+                    } else {
+                        Class[] params1 = ((Method) o1).getParameterTypes();
+                        Class[] params2 = ((Method) o2).getParameterTypes();
+                        if (params1.length == params2.length) {
+                            name1 += arrayToString(params1);
+                            name2 += arrayToString(params2);
+                        } else
+                            return params1.length - params2.length;
+                    }
+            }
+
+            return name1.toLowerCase().compareTo(name2.toLowerCase());
+        }
+    }
+}
+
+                        </pre>
+                    </div>
+                </div>
+                <a class="content-link" id="application"></a>
+                <div class="application">
+                    <h4><a href="http://myjsp.jspprojects.com/javaclassbrowser/faces/index.xhtml" target="_blank" title="JSP IPv4 Calculator">View in a new window</a></h4>
+                    <iframe src="http://myjsp.jspprojects.com/javaclassbrowser/faces/index.xhtml" width="97%" height="670px"></iframe>
+                    <a class="iframe" href="http://myjsp.jspprojects.com/javaclassbrowser/faces/index.xhtml" target="_blank" title="JSP IPv4 Calculator"><img src="../img/java-class-browse.jpg" alt="Java Class Browser"></a>
+                </div>
+
+                <div class="external-content"></div>
+            </div>
+            <footer>
+                <div class="social">
+                    <!-- LinkedIn Badge START -->
+                    <a href="http://ca.linkedin.com/in/joshuaheagle" target="_BLANK"
+                       title="Join Joshua's network on LinkedIn"><img src="../img/linkedin-icon.png"
+                                                                   alt="Professional profile of Joshua Heagle"
+                                                                   title="Network with the programmer on LinkedIn"/> </a>
+                    <!-- LinkedIn Badge END -->
+                    &nbsp;
+                    <!-- Facebook Badge START -->
+                    <a href="https://www.facebook.com/joshua.heagle.5" target="_BLANK"
+                       title="Friend Joshua on Facebook"><img src="../img/facebook-icon.png"
+                                                           alt="Developer profile of Joshua Heagle"
+                                                           title="Friend the developer on Facebook"/> </a>
+                    <!-- Facebook Badge END -->
+                    &nbsp;
+                    <!-- Twitter Badge START -->
+                    <a href="https://twitter.com/JoshuaHeagle" target="_BLANK"
+                       title="Follow Joshua on Twitter"><img src="../img/twitter-icon.png"
+                                                          alt="Joshua Heagle tweets programming"
+                                                          title="Follow the feed on programming"/> </a>
+                    <!-- Twitter Badge END -->
+                    &nbsp;
+                    <!-- GitHub Badge START -->
+                    <a href="https://github.com/jheagle" target="_BLANK"
+                       title="Visit Joshua's GitHub page"><img src="../img/github-icon.png"
+                                                            alt="Developer projects of Joshua Heagle"
+                                                            title="Full working projects on GitHub"/> </a>
+                    <!-- GitHub Badge END -->
+                    &nbsp;
+                    <!-- Google+ Badge START -->
+                    <a
+                        href="https://plus.google.com/u/0/115860777965756793038?rel=author"
+                        rel="author" target="_BLANK" title="View Joshua on Google+"><img
+                            src="../img/googleplus-icon.png" alt="Programmer Joshua Heagle"
+                            title="Developer profile Google+"/> </a>
+                    <!-- Google+ Badge END -->
+                </div>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/plaque.png" alt="Joshua Heagle"></a>
+            </footer>
+        </div>
+        <script type="text/javascript" src="../js/main.min.js"></script>
+        <script src="../assets/syntax-highlighter/prettify.js"></script>
+        <script type="text/javascript" src="../js/search-side.min.js"></script>
+        <script>
+            prettyPrint();
+        </script>
+    </body>
+</html>

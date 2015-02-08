@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!--[if lt IE 9]>
+        <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Live City Cameras | Website | We Make the City</title>
+        <meta name="description" content='Create a Live City Street Camera Website.'>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" href="../favicon.ico"
+              type="image/vnd.microsoft.icon">
+        <link rel="icon" type="image/icon" href="../favicon.ico">
+        <link rel="canonical" href="http://joshuaheagle.com/projects/live-street-cams">
+        <link rel="stylesheet" href="../css/main.min.css">
+        <link rel="stylesheet" href="../assets/syntax-highlighter/prettify.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="../js/respond.min.js"></script>
+        <script>
+            (function(i, s, o, g, r, a, m) {
+                i['GoogleAnalyticsObject'] = r;
+                i[r] = i[r] ||
+                        function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                a.async = 1;
+                a.src = g;
+                m.parentNode.insertBefore(a, m)
+            })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+            ga('create', 'UA-45433115-1', 'joshuaheagle.com');
+            ga('send', 'pageview');
+        </script>
+        <!--[if gte IE 9]>
+        <style type="text/css">
+        .gradient {
+        filter: none;
+        }
+        </style>
+        <![endif]-->
+    </head>
+    <body>
+        <div class="left-side">
+            <input id="search" type="search" results="5" autosave="searches"
+                   placeholder="Find projects. . .">
+            <button id="searchBtn" type="button">
+                Search
+            </button>
+            <div class="pagination"></div>
+            <div class="side-results"></div>
+            <div class="pagination"></div>
+        </div>
+        <div class="right-side"></div>
+        <div class="container">
+            <header>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/jh-logo.png" alt="Joshua Heagle"></a>
+                <h1>Display Live City Cams in a Website Header</h1>
+                <h2>First time to shine&mdash;Cameras rolling</h2>
+                <ul class="menu">
+                    <li>
+                        <a href="/">Portfolio Home</a>
+                    </li>
+                    <li>
+                        <a href="/about">About Joshua</a>
+                    </li>
+                    <li class="current-page">
+                        <a href="/projects/">All Projects</a>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#">Just Some Programming</a>
+                        <ul>
+                            <li>
+                                <a href="http://jspprojects.com/" target="_blank">Home</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/articles" target="_blank">Articles</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/blogs" target="_blank">Blogs</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/forums" target="_blank">Forums</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </header>
+            <div class="contents">
+                <div class="overview">
+                    <h3>Eyes on the City</h3>
+                    <h4><a href="#application" title="View We Make the City">Go to Project</a></h4>
+                    <p class="by-line">
+                        By: <a href="mailto:contact@joshuaheagle.com">Joshua Heagle</a>
+                    </p>
+                    <div>
+                        <p>
+                            My first opportunity to demonstrate my skills appeared in the form on a unique challenge at my first developer job.
+                            We were releasing a website to promote and provide information on an city-wide art event.
+                        </p>
+                        <p>
+                            We thought it would be really interesting to provide a view of a live city cameras from around the city. The live
+                            camera feed were being taken from the official city website.</p>
+                    </div>
+                    <div>
+                        <p>
+                            The challenge this posed is that you have to actually be on the website to view the camera, otherwise there would be
+                            an accessed denied message instead of the camera feed.
+                        </p>
+                        <p></p>
+                    </div>
+                    <div class="codesnip">
+                        <a class="quick-link" href="#application" title="View Java Class Browser">Go to Application</a>
+                        <pre class="prettyprint linenums">
+&lt;head&gt;
+    &lt;script&gt;
+        /* Use JavaScript to write the styles that add the camera view as a background image. I used the eleven best cameras views I found. */
+        var camera = Math.floor(Math.random() * 12); // Select a random number for which camera to display each time.
+        switch (camera) {
+            case 0:
+                document.write("&lt;style&gt;.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=41');} &lt;/style&gt;");
+                break;
+                        ...
+            case 10:
+                document.write("&lt;style&gt;.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=46');} &lt;/style&gt;");
+                break;
+            default:
+                document.write("&lt;style&gt;.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=189');} &lt;/style&gt;");
+        }
+    &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;!-- Use an iframe to access the city site and cache access to the site. Set its height and width to 0 (we don't want it to display)  --&gt;
+    &lt;iframe src="http://traffic.ottawa.ca/map/index" frameborder="0" height="0" width="0" style="width: 0; height: 0"&gt;&lt;/iframe&gt;
+    &lt;div class="live-cam"&gt;&lt;/div&gt;
+&lt;/body&gt;
+                        </pre>
+                    </div>
+
+                </div>
+                <a class="content-link" id="application"></a>
+                <div class="application">
+                    <h4><a href="http://www.wemakethecity.ca" target="_blank" title="Live City Cams We Make the City">View in a new window</a></h4>
+                    <iframe src="http://traffic.ottawa.ca/map/intersections" frameborder="0" height="0" width="0" style="width: 0 !important; height: 0 !important"></iframe>
+                    <div class="live-cam"></div>
+                    <div class="blue-shade"></div>
+                </div>
+
+            </div>
+            <footer>
+                <div class="social">
+                    <!-- LinkedIn Badge START -->
+                    <a href="http://ca.linkedin.com/in/joshuaheagle" target="_BLANK"
+                       title="Join Joshua's network on LinkedIn"><img src="../img/linkedin-icon.png"
+                                                                   alt="Professional profile of Joshua Heagle"
+                                                                   title="Network with the programmer on LinkedIn"/> </a>
+                    <!-- LinkedIn Badge END -->
+                    &nbsp;
+                    <!-- Facebook Badge START -->
+                    <a href="https://www.facebook.com/joshua.heagle.5" target="_BLANK"
+                       title="Friend Joshua on Facebook"><img src="../img/facebook-icon.png"
+                                                           alt="Developer profile of Joshua Heagle"
+                                                           title="Friend the developer on Facebook"/> </a>
+                    <!-- Facebook Badge END -->
+                    &nbsp;
+                    <!-- Twitter Badge START -->
+                    <a href="https://twitter.com/JoshuaHeagle" target="_BLANK"
+                       title="Follow Joshua on Twitter"><img src="../img/twitter-icon.png"
+                                                          alt="Joshua Heagle tweets programming"
+                                                          title="Follow the feed on programming"/> </a>
+                    <!-- Twitter Badge END -->
+                    &nbsp;
+                    <!-- GitHub Badge START -->
+                    <a href="https://github.com/jheagle" target="_BLANK"
+                       title="Visit Joshua's GitHub page"><img src="../img/github-icon.png"
+                                                            alt="Developer projects of Joshua Heagle"
+                                                            title="Full working projects on GitHub"/> </a>
+                    <!-- GitHub Badge END -->
+                    &nbsp;
+                    <!-- Google+ Badge START -->
+                    <a
+                        href="https://plus.google.com/u/0/115860777965756793038?rel=author"
+                        rel="author" target="_BLANK" title="View Joshua on Google+"><img
+                            src="../img/googleplus-icon.png" alt="Programmer Joshua Heagle"
+                            title="Developer profile Google+"/> </a>
+                    <!-- Google+ Badge END -->
+                </div>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/plaque.png" alt="Joshua Heagle"></a>
+            </footer>
+        </div>
+        <script type="text/javascript" src="../js/main.min.js"></script>
+        <script src="../assets/syntax-highlighter/prettify.js"></script>
+        <script type="text/javascript" src="../js/search-side.min.js"></script>
+        <script>
+            prettyPrint();
+        </script>
+        <script>
+            var isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+            var isIE = /*@cc_on!@*/false;
+            if (!isSafari && !isIE) {
+                var camera = Math.floor(Math.random() * 12);
+                switch (camera) {
+                    case 0:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=41');} </style>");
+                        $('.blue-shade').html("Albert &amp; Lyon");
+                        break;
+                    case 1:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=42');} </style>");
+                        $('.blue-shade').html("Albert &amp; O'Connor");
+                        break;
+                    case 2:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=123');} </style>");
+                        $('.blue-shade').html("Bank &amp; Laurier");
+                        break;
+                    case 3:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=64');} </style>");
+                        $('.blue-shade').html("Bank &amp; Somerset");
+                        break;
+                    case 4:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=34');} </style>");
+                        $('.blue-shade').html("Elgin &amp; Queen");
+                        break;
+                    case 5:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=157');} </style>");
+                        $('.blue-shade').html("Bay &amp; Laurier");
+                        break;
+                    case 6:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=184');} </style>");
+                        $('.blue-shade').html("Besserer &amp; Waller");
+                        break;
+                    case 7:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=4');} </style>");
+                        $('.blue-shade').html("Bronson &amp; Carling");
+                        break;
+                    case 8:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=185');} </style>");
+                        $('.blue-shade').html("Dalhousie &amp; Murray");
+                        break;
+                    case 9:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=107');} </style>");
+                        $('.blue-shade').html("Dalhousie &amp; Rideau");
+                        break;
+                    case 10:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=46');} </style>");
+                        $('.blue-shade').html("Kent &amp; Slater");
+                        break;
+                    default:
+                        document.write("<style>.live-cam { background: url('http://traffic.ottawa.ca/map/camera?id=189');} </style>");
+                        $('.blue-shade').html("Bank &amp; Fifth");
+                }
+            }
+        </script>
+    </body>
+</html>

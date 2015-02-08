@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Java Swing Applet | Calculator</title>
+        <meta name="description" content='Create a Java Swing Graphical User Interface (GUI) Calculator application and applet. See sample
+              code for some of the calculations, as well as a structure overview.'>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" href="../favicon.ico"
+              type="image/vnd.microsoft.icon">
+        <link rel="icon" type="image/icon" href="../favicon.ico">
+        <link rel="canonical" href="http://joshuaheagle.com/projects/wgui-calculator">
+        <link rel="stylesheet" href="../css/main.min.css">
+        <link rel="stylesheet" href="../assets/syntax-highlighter/prettify.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="../js/respond.min.js"></script>
+        <script>
+            (function(i, s, o, g, r, a, m) {
+                i['GoogleAnalyticsObject'] = r;
+                i[r] = i[r] ||
+                        function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                a.async = 1;
+                a.src = g;
+                m.parentNode.insertBefore(a, m)
+            })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+            ga('create', 'UA-45433115-1', 'joshuaheagle.com');
+            ga('send', 'pageview');
+        </script>
+        <!--[if gte IE 9]>
+        <style type="text/css">
+        .gradient {
+        filter: none;
+        }
+        </style>
+        <![endif]-->
+    </head>
+    <body>
+        <div class="left-side">
+            <input id="search" type="search" results="5" autosave="searches"
+                   placeholder="Find projects. . .">
+            <button id="searchBtn" type="button">
+                Search
+            </button>
+            <div class="pagination"></div>
+            <div class="side-results"></div>
+            <div class="pagination"></div>
+        </div>
+        <div class="right-side"></div>
+        <div class="container">
+            <header>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/jh-logo.png" alt="Joshua Heagle"></a>
+                <h1>Use Swing to build a Java user interface.</h1>
+                <h2>You can count on me.</h2>
+                <ul class="menu">
+                    <li>
+                        <a href="/">Portfolio Home</a>
+                    </li>
+                    <li>
+                        <a href="/about">About Joshua</a>
+                    </li>
+                    <li class="current-page">
+                        <a href="/projects/">All Projects</a>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#">Just Some Programming</a>
+                        <ul>
+                            <li>
+                                <a href="http://jspprojects.com/" target="_blank">Home</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/articles" target="_blank">Articles</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/blogs" target="_blank">Blogs</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/forums" target="_blank">Forums</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </header>
+            <div class="contents">
+                <div class="overview">
+                    <h3>Not just a pretty face.</h3>
+                    <h4><a href="#application" title="View GUI Calculator">Go to Application</a></h4>
+                    <p class="by-line">
+                        By: <a href="mailto:contact@joshuaheagle.com">Joshua Heagle</a>
+                    </p>
+                    <div>
+                        <p>
+                            Using Java Swing I created this applet in a Java Application Programming course. The course focused on creating usable
+                            interfaces which are both functional and easy for the user to understand. This was a three part project. For the first part
+                            we were given an image of the app and were required to replicate it.
+                        </p>
+                        <p>
+                            Starting with the view - or graphical interface - gave importance to usability and design specification. The first part was the
+                            easiest, but it was also very influential. The latter parts depended on correct implementation.
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            I was fortunate in my implementation as the professor stated in his words: &ldquo;[My] solution was the cleanest as the remainder
+                            of the students appeared to have hacked their way through the solution.&rdquo; The second stage of implementation was creating a controller
+                            for registering input.
+                        </p>
+                        <p>
+                            In the final portion of this project we built the model which performed the actual math and other functionality. Reaching some
+                            of the bonus requirements were the hardest, but most rewarding.
+                        </p>
+                    </div>
+                    <div class="codesnip">
+                        <a class="quick-link" href="#application" title="View Java Class Browser">Go to Application</a>
+                        <pre class="prettyprint linenums">
+	/**
+	 * The Controller inner class is responsible for creating responses to user
+	 * input by implementing ActionListener.
+	 * 
+	 * @version 1.00
+	 * 
+	 * @author Joshua
+	 * 
+	 */
+	private class Controller implements ActionListener {
+		private boolean dot = false;		// toggle numbers before or after dot	- flag
+		private int decimal = 0;			// track decimal places after dot		- flag
+		private int inputCount = 0;		// track number of operands input		- flag
+		private boolean newInput = true;	// is this the first operand?			- flag
+		private boolean firstDigit = true;	// is this the first input?				- flag
+		private CalculatorModel calc = new CalculatorModel();		// reference to the model
+		private DecimalFormat df = new DecimalFormat("0.0#####");	// format for float
+		/**
+		 * This method is part of the ActionListener, it is responsible for
+		 * generating the correct response for user input.
+		 * 
+		 * @param ae
+		 *            (receives ActionEvent for selecting type of response)
+		 */
+		@Override
+		public void actionPerformed(ActionEvent ae) {
+			// discover what button made a request and set it as a String.
+			String s = ae.getActionCommand();
+			display.requestFocusInWindow(); // remove focus from input item, and
+											// set it to display output.
+			// compares the actions as a string to expected actions to decide
+			// appropriate response.
+			if (s.equals("&lt;&lt;")) {
+				// perform string alteration on text field to trim from right.
+			} else if (s.equals("Integer")) {
+				// switch to Integer calculations
+			} else if (s.equals("Float")) {
+				// switch to Float calculations
+			} else {
+				// if button pressed was not a number, display the associated
+				// string.
+				if (s.equals(".")) {
+					dot = true;
+				} else if (s.equals("+/-")) {
+					// toggle positive / negative number
+				} else if (s.equals("/")) {
+					// division operator: call to submit method.
+				} else if (s.equals("P")) {
+					// power-of operator: call to submit method.
+				} else if (s.equals("*")) {
+					// multiplication operator: call to submit method.
+				} else if (s.equals("\u221A")) {
+					// square root operator: call to submit method.
+				} else if (s.equals("-")) {
+					// subtraction operator: call to submit method.
+				} else if (s.equals("+")) {
+					// addition operator: call to submit method.
+				} else if (s.equals("C")) {
+					// clear function: call to clearAll method
+				} else if (s.equals("=")) {
+					// reset input counter and call submit method
+				} else {
+					/*
+					 * if button pressed was a number, display number as float
+					 * or integer based on selected mode
+					 */
+					if (flt.isSelected()) {
+						if (!firstDigit) {
+							if (!dot) {
+								// input before dot
+							} else {
+								if (decimal == 0) {
+									// place a dot and input after the dot
+								} else {
+									// input after dot
+								}
+							}
+						} else {
+							inputCount++;
+							// just place number then a dot and 0 or a 0 then a dot and the new number
+							firstDigit = false;
+						}
+					} else {
+						if (!firstDigit) {
+							// input to end
+						} else {
+							inputCount++;
+							// put the new number
+							firstDigit = false;
+						}
+					}
+				}
+			}
+		}
+		private void clearAll() {
+			// reset all flags, counters, inputs, and error status
+		}
+		private void errorMode() {
+			// display error status
+		}
+		private void submit(String s) {
+			/* The submit method is core for accessing resources from the Model via get / set methods.
+			
+			Submit will access the setOperands method with numeric input from the display screen
+			and will access the setOperation method with the string that was submitted. The submit
+			is always and only called when a non-number value is entered in the calculator, ensuring
+			the numeric values have been fully typed on the display screen first.
+			
+			The submit method is also responsible for calling the performCalculations method of the
+			model which will return a result if it is not new input. The performCalculations requires
+			a try-catch which will catch ArithmeticException. This exception is both internal and set
+			when an unacceptable input or result has been processed.
+			
+			There is a special case for the square root which only needs one input to process. And
+			flags need to be flipped or reset in order to continue some calculations and processes. */
+		}
+	}
+						
+                        </pre>
+                    </div>
+                </div>
+                <a class="content-link" id="application"></a>
+                <div class="application">
+                    <applet archive="../applets/Calculator.jar" code="AppletMain.class">
+                        <img src="../img/gui-calculator.jpg" alt="Calculator applet missing">
+                        <p>
+                            Sorry, your browser is missing the java plugin
+                        </p>
+                    </applet>
+                </div>
+
+            </div>
+            <footer>
+                <div class="social">
+                    <!-- LinkedIn Badge START -->
+                    <a href="http://ca.linkedin.com/in/joshuaheagle" target="_BLANK"
+                       title="Join Joshua's network on LinkedIn"><img src="../img/linkedin-icon.png"
+                                                                   alt="Professional profile of Joshua Heagle"
+                                                                   title="Network with the programmer on LinkedIn"/> </a>
+                    <!-- LinkedIn Badge END -->
+                    &nbsp;
+                    <!-- Facebook Badge START -->
+                    <a href="https://www.facebook.com/joshua.heagle.5" target="_BLANK"
+                       title="Friend Joshua on Facebook"><img src="../img/facebook-icon.png"
+                                                           alt="Developer profile of Joshua Heagle"
+                                                           title="Friend the developer on Facebook"/> </a>
+                    <!-- Facebook Badge END -->
+                    &nbsp;
+                    <!-- Twitter Badge START -->
+                    <a href="https://twitter.com/JoshuaHeagle" target="_BLANK"
+                       title="Follow Joshua on Twitter"><img src="../img/twitter-icon.png"
+                                                          alt="Joshua Heagle tweets programming"
+                                                          title="Follow the feed on programming"/> </a>
+                    <!-- Twitter Badge END -->
+                    &nbsp;
+                    <!-- GitHub Badge START -->
+                    <a href="https://github.com/jheagle" target="_BLANK"
+                       title="Visit Joshua's GitHub page"><img src="../img/github-icon.png"
+                                                            alt="Developer projects of Joshua Heagle"
+                                                            title="Full working projects on GitHub"/> </a>
+                    <!-- GitHub Badge END -->
+                    &nbsp;
+                    <!-- Google+ Badge START -->
+                    <a
+                        href="https://plus.google.com/u/0/115860777965756793038?rel=author"
+                        rel="author" target="_BLANK" title="View Joshua on Google+"><img
+                            src="../img/googleplus-icon.png" alt="Programmer Joshua Heagle"
+                            title="Developer profile Google+"/> </a>
+                    <!-- Google+ Badge END -->
+                </div>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/plaque.png" alt="Joshua Heagle"></a>
+            </footer>
+        </div>
+        <script type="text/javascript" src="../js/main.min.js"></script>
+        <script src="../assets/syntax-highlighter/prettify.js"></script>
+        <script type="text/javascript" src="../js/search-side.min.js"></script>
+        <script>
+            prettyPrint();
+        </script>
+    </body>
+</html>

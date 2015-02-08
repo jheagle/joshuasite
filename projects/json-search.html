@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>JSON with jQuery | Search JSON with jQuery</title>
+        <meta name="description" content='Create a smart JSON search using jQuery. See full JavaScript code,
+              as well as an explanation.'>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" href="../favicon.ico"
+              type="image/vnd.microsoft.icon">
+        <link rel="icon" type="image/icon" href="../favicon.ico">
+        <link rel="canonical" href="http://joshuaheagle.com/projects/json-search">
+        <link rel="stylesheet" href="../css/main.min.css">
+        <link rel="stylesheet" href="../assets/syntax-highlighter/prettify.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="../js/respond.min.js"></script>
+        <script>
+            (function(i, s, o, g, r, a, m) {
+                i['GoogleAnalyticsObject'] = r;
+                i[r] = i[r] ||
+                        function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                a.async = 1;
+                a.src = g;
+                m.parentNode.insertBefore(a, m)
+            })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+            ga('create', 'UA-45433115-1', 'joshuaheagle.com');
+            ga('send', 'pageview');
+        </script>
+        <!--[if gte IE 9]>
+        <style type="text/css">
+        .gradient {
+        filter: none;
+        }
+        </style>
+        <![endif]-->
+    </head>
+    <body>
+        <div class="left-side">
+            <input id="search" type="search" results="5" autosave="searches"
+                   placeholder="Find projects. . .">
+            <button id="searchBtn" type="button">
+                Search
+            </button>
+            <div class="pagination"></div>
+            <div class="side-results"></div>
+            <div class="pagination"></div>
+        </div>
+        <div class="right-side"></div>
+        <div class="container">
+            <header>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/jh-logo.png" alt="Joshua Heagle"></a>
+                <h1>JSON search with jQuery</h1>
+                <h2>Your search is finally over.</h2>
+                <ul class="menu">
+                    <li>
+                        <a href="/">Portfolio Home</a>
+                    </li>
+                    <li>
+                        <a href="/about">About Joshua</a>
+                    </li>
+                    <li class="current-page">
+                        <a href="/projects/">All Projects</a>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#">Just Some Programming</a>
+                        <ul>
+                            <li>
+                                <a href="http://jspprojects.com/" target="_blank">Home</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/articles" target="_blank">Articles</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/blogs" target="_blank">Blogs</a>
+                            </li>
+                            <li>
+                                <a href="http://jspprojects.com/forums" target="_blank">Forums</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </header>
+            <div class="contents">
+                <div class="overview">
+                    <h3>Searching the clever way.</h3>
+                    <h4><a href="#application" title="View JSON search">Go to Application</a></h4>
+                    <p class="by-line">
+                        By: <a href="mailto:contact@joshuaheagle.com">Joshua Heagle</a>
+                    </p>
+                    <div>
+                        <p>
+                            While considering the projects I have posted and the projects I have yet to
+                            post, I realized I wanted a simple method of sorting and searching for projects.
+                            I realized I couldn't be satisfied with simple categories or a search without
+                            prejudice.
+                        </p>
+                        <p>
+                            I wanted a strong keyword search where results were returned based on relevance,
+                            so I set about deciding how to rate each result in order to find best match. This
+                            now meant a full analysis of each project.
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            Since my projects are stored as JSON I decided to use JavaScript to search and sort
+                            the results. I sort each project by each of its attributes and give a weighted value
+                            to each. The higher values are the best matches.
+                        </p>
+                        <p>
+                            For example, if a paragraph contains the exact words as searched then this is most
+                            likely to be the desired result. Smaller words are weighted less do to their likely
+                            higher frequency. Titles may also rank higher.
+                        </p>
+                    </div>
+                    <div class="codesnip">
+                        <a class="quick-link" href="#application" title="View Java Class Browser">Go to Application</a>
+                        <pre class="prettyprint linenums">
+/* project search page custom scripts */
+$(document).ready(function() {
+	(function(){ // protect variables and functions from external interference
+		var projects = $(); // save projects to prevent frequent callbacks
+		/* pre-load all projects so there is existing content */
+		$.getJSON('../db/projects.json', function(data) {
+			$(".results").empty(); // ensure div is empty first
+			$(".results").append("All projects from most recent.");
+			projects = data.projects; // add projects to reusable object
+			/* load each project onto the page */
+			$.each(projects, function(i, project){
+				if(i === 0) $(".results").append("&lt;hr /&gt;");		
+					$(".results").append("&lt;div class='result'&gt;&lt;a href='"
+							+ project.url + "'&gt;&lt;img src='" + project.img + "' alt='"
+							+ project.name + "'&gt;&lt;/a&gt;&lt;div&gt;&lt;a href='"	+ project.url
+							+ "'&gt;&lt;h3&gt;" + project.name + "&lt;/h3&gt;&lt;h4&gt;Created at "
+							+ project.location + "&lt;/h4&gt;&lt;p&gt;" + project.description
+							+ "&lt;/p&gt;&lt;/a&gt;&lt;/div&gt;&lt;p&gt;" + project.type + "&lt;/p&gt;&lt;/div&gt;&lt;hr /&gt;");
+			});
+		});
+		/* handle interactions with the input menus - perform immediate searches */
+		$("#type").change(function (){ // modify search type if term exists
+			if($("#search").val().trim() != "")
+				doSearch($("#search").val(), $('#type').find(":selected").text());
+		});	
+
+		$("#search").keyup(function(e){ // type into the search box
+			delay(function(){
+				doSearch($("#search").val(), $('#type').find(":selected").text());				
+			}, 600);
+		});
+
+		$("#searchBtn").click(function(e){ // click search button
+			doSearch($("#search").val(), $('#type').find(":selected").text());
+		});
+
+		/* entry function for receiving input and sending it to filter, then displaying the input */
+		function doSearch(term, type){
+			type = type.toLowerCase() || "all"; // set type to lowercase if it is received
+			$(".results").empty(); // ensure div is empty first
+			var time = new Date().getTime(), // start time
+			results = filter(projects, term, type); // request filtered object list
+			time = (new Date().getTime() - time) / 1000; // calculate elapsed time
+			$(".results").append(results.length + " Results for &lt;strong&gt;'" + term + "'&lt;/strong&gt;"
+					+ "&lt;br&gt;Returned in " + time + " seconds");
+			$.each(results, function(i, result){
+				if(i === 0) $(".results").append("&lt;hr /&gt;");
+				if(result.value &gt; 0){ // only display qualifying results
+					var project = result.key,
+					noMatch = result.noMatch,
+					hasMatch = result.match,
+					terms = term;
+					
+					/* display the keywords searched and found */
+					$.each(noMatch, function(j, word){
+						if(jQuery.inArray(word, hasMatch) &lt; 0){
+							var regEx = new RegExp(word, "ig");
+							terms = terms.replace(regEx, '&lt;del&gt;$&amp;&lt;/del&gt;');
+						}
+					});
+					
+					/* print all the results with their associated information */
+					$(".results").append("&lt;p&gt;&lt;strong&gt;Match Score "
+							+ result.value + "&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;"
+							+ terms + "&lt;/p&gt;&lt;div class='result'&gt;&lt;a href='"
+							+ project.url + "'&gt;&lt;img src='" + project.img + "' alt='"
+							+ project.name + "'&gt;&lt;/a&gt;&lt;div&gt;&lt;a href='"	+ project.url
+							+ "'&gt;&lt;h3&gt;" + project.name + "&lt;/h3&gt;&lt;h4&gt;Created at "
+							+ project.location + "&lt;/h4&gt;&lt;p&gt;" + project.description
+							+ "&lt;/p&gt;&lt;/a&gt;&lt;/div&gt;&lt;p&gt;" + project.type + "&lt;/p&gt;&lt;/div&gt;&lt;hr /&gt;");
+				}
+			});	
+		}
+		/* Delay function borrowed from Christian C. Salvadó (username CMS)
+		 * from a StackOverflow post @ 
+		 * http://stackoverflow.com/questions/1909441/jquery-keyup-delay */
+		var delay = (function(){
+		  var timer = 0;
+		  return function(callback, ms){
+		    clearTimeout (timer);
+		    timer = setTimeout(callback, ms);
+		  };
+		})();
+	})();
+});
+
+function filter(projects, term, type){
+	/* create a new copy of the object list to modify, do not corrupt the original! */
+	var data = jQuery.extend(true, {}, projects);
+	type = type || "all";
+	var results = [];
+	if(term.length &gt; 0){					
+		var words = $.trim(term).split(" "); // split term into words
+		
+		switch(type){
+		case "all":
+			// if all, filter through to all searches
+		case "name":
+			$.each(data, function(i, project){
+				var count = 0, // store project search rank
+				noMatch = [], // store unmatched terms
+				hasMatch = []; // store matched terms
+				$.each(words, function(j, word){
+					var num = 0; // score for current word
+					
+					word = escapeRegExp(word); // eliminate regex characters
+					
+					/* detect single letter input as first search, if it is then search
+					 * all matching, otherwise search only complete words as case-insensitive */
+					var regEx = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "ig"): new RegExp(word, "ig");
+					
+					var matches = project.name.match(regEx); // find matches
+					num = (matches||[]).length; // add to temporary score
+					if(num &gt; 0){ // add a bonus if matches are case sensitive
+						var regEx1 = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "g"): new RegExp(word, "g");
+						matches = project.name.match(regEx1);
+						num += (matches||[]).length;
+						/* bold the words that do match in the object */
+						project.name = project.name.replace(regEx, '&lt;strong&gt;$&amp;&lt;/strong&gt;');
+					}
+					
+					if(num &lt;= 0){
+						/* add word to not matching if score is 0 */
+						if(jQuery.inArray(word, noMatch) &lt; 0){
+							noMatch.push(word);
+						}
+						count -= Math.ceil(count / (j + 1)); // deduct from score
+					}else {
+						/* add word to matching if score is greater than 0 */
+						if(jQuery.inArray(word, hasMatch) &lt; 0){
+							hasMatch.push(word);
+						}
+						/* increment score - value is rounded down */
+						/* avoid floating point numbers by multiplying by
+						 * 100 first, then divide by number of search terms */
+						count += Math.floor((num * 100) / words.length);
+					}								
+				});
+				/* if the not matching word list is larger than the matching, then serious deduction */
+				if (noMatch.length &gt; hasMatch.length){
+					count = 0;
+				}
+				/* if there are previous results update the current results values */
+				if (results.length &gt; i){
+					count += results[i].value;
+					$.each(results[i].noMatch, function(x, item){
+						if(jQuery.inArray(item, noMatch) &lt; 0){
+							noMatch.push(item);
+						}
+					});
+					$.each(results[i].match, function(x, item){
+						if(jQuery.inArray(item, hasMatch) &lt; 0){
+							hasMatch.push(item);
+						}
+					});
+				}
+				/* add these values to the results */
+				results[i] = ({key : project, value: count, noMatch: noMatch, match: hasMatch});
+			});	
+			
+			if(type === "name") break;
+		case "type":
+			$.each(data, function(i, project){
+				var count = 0,
+				noMatch = [],
+				hasMatch = [],
+				numTypes = project.type.split(/\s*,\s*/).length; // count the number of types associated with the project
+				$.each(words, function(j, word){
+					var num = 0;
+					
+					word = escapeRegExp(word);
+					
+					var regEx = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "ig"): new RegExp(word, "ig");
+					
+					var matches = project.type.match(regEx);
+					num = (matches||[]).length;
+					if(num &gt; 0){
+						var regEx1 = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "g"): new RegExp(word, "g");
+						matches = project.type.match(regEx1);
+						num += (matches||[]).length;
+						project.type = project.type.replace(regEx, '&lt;strong&gt;$&amp;&lt;/strong&gt;');
+					}
+					
+					if(num &lt;= 0){
+						if(jQuery.inArray(word, noMatch) &lt; 0){
+							noMatch.push(word);
+						}
+						count -= Math.ceil(count / (j + 1));
+					}else{
+						if(jQuery.inArray(word, hasMatch) &lt; 0){
+							hasMatch.push(word);
+						}
+						/* avoid floating point numbers by multiplying by
+						 * 100 first, then divide by number of search terms.
+						 * divide score by number of types, then boost the
+						 * value by doubling it. */
+						count += Math.floor((((num * 100) / words.length) / numTypes) * 2);
+					}
+				});
+				if (noMatch.length &gt; hasMatch.length){
+					count = 0;
+				}
+				if (results.length &gt; i){
+					count += results[i].value;
+					$.each(results[i].noMatch, function(x, item){
+						if(jQuery.inArray(item, noMatch) &lt; 0){
+							noMatch.push(item);
+						}
+					});
+					$.each(results[i].match, function(x, item){
+						if(jQuery.inArray(item, hasMatch) &lt; 0){
+							hasMatch.push(item);
+						}
+					});
+				}
+				results[i] = ({key : project, value: count, noMatch: noMatch, match: hasMatch});
+			});	
+			
+			if(type === "type") break;
+		case "location":
+			$.each(data, function(i, project){
+				var count = 0,
+				noMatch = [],
+				hasMatch = [];
+				$.each(words, function(j, word){
+					var num = 0;
+					
+					word = escapeRegExp(word);
+					
+					var regEx = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "ig"): new RegExp(word, "ig");
+					
+					var matches = project.location.match(regEx);
+					num = (matches||[]).length;
+					if(num &gt; 0){
+						var regEx1 = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "g"): new RegExp(word, "g");
+						matches = project.location.match(regEx1);
+						num += (matches||[]).length;
+						project.location = project.location.replace(regEx, '&lt;strong&gt;$&amp;&lt;/strong&gt;');
+					}
+					
+					if(num &lt;= 0){
+						if(jQuery.inArray(word, noMatch) &lt; 0){
+							noMatch.push(word);
+						}
+						count -= Math.ceil(count / (j + 1));
+					}else {
+						if(jQuery.inArray(word, hasMatch) &lt; 0){
+							hasMatch.push(word);
+						}
+						/* avoid floating point numbers by multiplying by
+						 * 100 first, then divide by number of search terms.
+						 * boost this score by doubling it as location will
+						 * receive few matches. */
+						count += Math.floor(((num * 100) / words.length) * 2);
+					}
+				});
+				if (noMatch.length &gt; hasMatch.length){
+					count = 0;
+				}
+				if (results.length &gt; i){
+					count += results[i].value;
+					$.each(results[i].noMatch, function(x, item){
+						if(jQuery.inArray(item, noMatch) &lt; 0){
+							noMatch.push(item);
+						}
+					});
+					$.each(results[i].match, function(x, item){
+						if(jQuery.inArray(item, hasMatch) &lt; 0){
+							hasMatch.push(item);
+						}
+					});
+				}
+				results[i] = ({key : project, value: count, noMatch: noMatch, match: hasMatch});
+			});	
+			
+			if(type === "location") break;
+		default: //description
+			$.each(data, function(i, project){
+				var count = 0,
+				noMatch = [],
+				hasMatch = [],
+				perWord = [], // track score per word in this array
+				hasAll = true, // if flag is true, bonus for full matching terms
+				small = 0, // store smallest word score
+				big = 0; // store largest word score
+				$.each(words, function(j, word){
+					var num = 0;
+					
+					word = escapeRegExp(word);
+					
+					var regEx = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "ig"): new RegExp(word, "ig");
+					
+					var matches = project.description.match(regEx);
+					num = (matches||[]).length;
+					if(num &gt; 0){
+						var regEx1 = word.length &gt; 1 || words.length &gt; 1? new RegExp("\\b" + word + "\\b", "g"): new RegExp(word, "g");
+						matches = project.description.match(regEx1);
+						num += (matches||[]).length;
+						project.description = project.description.replace(regEx, '&lt;strong&gt;$&amp;&lt;/strong&gt;');
+					}
+					
+					if(num &lt;= 0){
+						if(jQuery.inArray(word, noMatch) &lt; 0){
+							noMatch.push(word);
+						}
+						hasAll = false;
+						count -= Math.ceil(count / (j + 1));
+					}else{
+						if(jQuery.inArray(word, hasMatch) &lt; 0){
+							hasMatch.push(word);
+						}
+						/* avoid floating point numbers by multiplying by
+						 * 100 first, then divide by number of search terms.
+						 * no other bonus as this could return a lot of
+						 * results as-is */
+						count += Math.floor((num * 100) / words.length);
+						perWord.push(num);
+					}
+				});
+				
+				if (noMatch.length &gt; hasMatch.length){
+					count = 0;
+				}else{
+					/* find the smallest and largest word counts */
+					for(var j = 0; j &lt; perWord.length; j++){
+						if(small === 0){
+							small = perWord[j];
+						}
+						if(perWord[j] &lt; small){
+							small = perWord[j];
+						}
+						if(perWord[j] &gt; big){
+							big = perWord[j];
+						}
+					}
+					
+					if(count &gt; 0){
+						/* a small difference between word counts
+						 * could mean that there is a close match */
+						var x = count - big &lt; big - small? count - big : big - small;
+						
+						count = count - x; // remove the over-bloated result from non-essential words (at, in, on, the)				
+					}
+					
+					/* if all words were present, then change the
+					 * bonus reflected by the result of more essential words */
+					if(hasAll){
+						count += small * 3;
+					} else {
+						count += small * 2;
+					}
+					
+				}
+
+				if (results.length &gt; i){
+					count += results[i].value;
+					$.each(results[i].noMatch, function(x, item){
+						if(jQuery.inArray(item, noMatch) &lt; 0){
+							noMatch.push(item);
+						}
+					});
+					$.each(results[i].match, function(x, item){
+						if(jQuery.inArray(item, hasMatch) &lt; 0){
+							hasMatch.push(item);
+						}
+					});
+				}
+				results[i] = ({key : project, value: count, noMatch: noMatch, match: hasMatch});
+			});	
+		}
+		results = mergeSort(results); // sort results in order of score
+	}
+	return results;			
+}
+
+/* RegEx escape function borrowed from John Hunt from a StackOverflow post @
+ * http://stackoverflow.com/questions/5306095/simple-jquery-javascript-method-to-escape-special-characters-in-string-for-reg */
+function escapeRegExp(string){
+	return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+}
+
+/* Merge sort algorithm borrowed and modified from
+ * Nicholas C. Zakas @
+ * http://www.nczonline.net/blog/2012/10/02/computer-science-and-javascript-merge-sort/
+ * 
+ * I knew I wanted to use a merge sort because of its speed and efficiency,
+ * so I looked one up. Thanks to the first google result I found this
+ * nice bit of code from Nicholas. While the extra memory usage may be a drawback,
+ * it was easy to customize for my means and it is still a lovely algorithm.
+ * This algorithm receives my search results and sorts them by score from highest to
+ * lowest and removes all results of zero or less. */
+
+/* mergeSort receives the results and splits them in half if they are greater than one
+ * in length, each segment is passed to the merge function so they can be sorted
+ * and returned recursivley. */
+function mergeSort(items){
+	// if length is less than two, then sorting is complete, return the item if it has a score of more than zero
+    if (items.length &lt; 2) {
+    	items = items[0].value &gt; 0? items : []; // check score
+        return items;
+    }
+
+    var middle = Math.floor(items.length / 2), // find mid-point to cut
+        left    = items.slice(0, middle), // segment on left
+        right   = items.slice(middle), // segment on right
+        params = merge(mergeSort(left), mergeSort(right)); // recursively split and merge segments
+    
+    params.unshift(0, items.length); // change all values in the array
+    items.splice.apply(items, params); // replace items with new array
+    return items;
+}
+
+/* combine results based on value */
+function merge(left, right){
+    var result  = [], // new result
+        il      = 0, // incremental left counter
+        ir      = 0; // incremental right counter
+    /* perform merge while counters are within array index range */
+    while (il &lt; left.length &amp;&amp; ir &lt; right.length){
+        if (left[il].value &gt; right[ir].value){ // sort from high to low
+            result.push(left[il++]); // add high value to the new results
+        } else {
+        	if(right[ir].value &gt; 0) // check if low value is above zero, then add to the array
+            	result.push(right[ir]);
+        	ir++;
+        }
+    }
+	
+    // combine and return results
+    return result.concat(left.slice(il)).concat(right.slice(ir));
+}
+
+                        </pre>
+                    </div>
+                </div>
+                <a class="content-link" id="application"></a>
+                <div class="application">
+                    <h4><a href="http://joshuaheagle.com/projects/index.html" target="_blank" title="JSON search algorithm">View in a new window</a></h4>
+                    <iframe src="http://joshuaheagle.com/projects/index.html" width="97%" height="670px"></iframe>
+                    <a class="iframe" href="http://joshuaheagle.com/projects/index.html" target="_blank" title="jQuery search JSON"><img src="../img/json-jquery-search.jpg" alt="JSON searching"></a>
+                </div>
+
+            </div>
+            <footer>
+                <div class="social">
+                    <!-- LinkedIn Badge START -->
+                    <a href="http://ca.linkedin.com/in/joshuaheagle" target="_BLANK"
+                       title="Join Joshua's network on LinkedIn"><img src="../img/linkedin-icon.png"
+                                                                   alt="Professional profile of Joshua Heagle"
+                                                                   title="Network with the programmer on LinkedIn"/> </a>
+                    <!-- LinkedIn Badge END -->
+                    &nbsp;
+                    <!-- Facebook Badge START -->
+                    <a href="https://www.facebook.com/joshua.heagle.5" target="_BLANK"
+                       title="Friend Joshua on Facebook"><img src="../img/facebook-icon.png"
+                                                           alt="Developer profile of Joshua Heagle"
+                                                           title="Friend the developer on Facebook"/> </a>
+                    <!-- Facebook Badge END -->
+                    &nbsp;
+                    <!-- Twitter Badge START -->
+                    <a href="https://twitter.com/JoshuaHeagle" target="_BLANK"
+                       title="Follow Joshua on Twitter"><img src="../img/twitter-icon.png"
+                                                          alt="Joshua Heagle tweets programming"
+                                                          title="Follow the feed on programming"/> </a>
+                    <!-- Twitter Badge END -->
+                    &nbsp;
+                    <!-- GitHub Badge START -->
+                    <a href="https://github.com/jheagle" target="_BLANK"
+                       title="Visit Joshua's GitHub page"><img src="../img/github-icon.png"
+                                                            alt="Developer projects of Joshua Heagle"
+                                                            title="Full working projects on GitHub"/> </a>
+                    <!-- GitHub Badge END -->
+                    &nbsp;
+                    <!-- Google+ Badge START -->
+                    <a
+                        href="https://plus.google.com/u/0/115860777965756793038?rel=author"
+                        rel="author" target="_BLANK" title="View Joshua on Google+"><img
+                            src="../img/googleplus-icon.png" alt="Programmer Joshua Heagle"
+                            title="Developer profile Google+"/> </a>
+                    <!-- Google+ Badge END -->
+                </div>
+                <a href="../index.html" title="Joshua Heagle Portfolio"><img class="logo" src="../img/plaque.png" alt="Joshua Heagle"></a>
+            </footer>
+        </div>
+        <script type="text/javascript" src="../js/main.min.js"></script>
+        <script src="../assets/syntax-highlighter/prettify.js"></script>
+        <script type="text/javascript" src="../js/search-side.min.js"></script>
+        <script>
+            prettyPrint();
+        </script>
+    </body>
+</html>
