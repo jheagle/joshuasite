@@ -1,15 +1,15 @@
 <?php
 session_start();
-require_once('models/customerClass.php');
-$customer = new customer();
-$customers = $customer->getAllCustomers();
-$customerList = "";
-foreach ($customers as $cust) {
-    $customerList .= "<option value='{$cust->getId()}'>{$cust->getLastName()}, {$cust->getFirstName()} {$cust->getMiddleName()}</option>";
+require_once('models/CustomerClass.php');
+$contact = new Contact();
+$contacts = $contact->get_all_contacts();
+$contactList = "";
+foreach ($contacts as $cust) {
+    $contactList .= "<option value='{$cust->id}'>{$cust->last_name}, {$cust->first_name} {$cust->middle_name}</option>";
 }
 
-$tracking = new tracking(isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
-$events = $tracking->getAllEvents(10, 0);
+$tracking = new Tracking(isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
+$events = $tracking->get_all_events(10, 0);
 $trackingList = "";
 foreach ($events as $event) {
     $trackingList .= "<tr><td>{$event['datetime']}</td><td>{$event['action']}</td><td>{$event['class_index']}</td></tr>";
@@ -160,8 +160,8 @@ foreach ($events as $event) {
                     </div>
                 </div>
                 <input class="more-filters" type="button" value="&#9660;">
-                <select id="customer-list" size="25"> 
-                    <?php echo $customerList; ?> 
+                <select id="contact-list" size="25"> 
+                    <?php echo $contactList; ?> 
                 </select> 
                 <input id="import" type="button" value="Import"> 
                 <input id="export" type="button" value="Export">
@@ -170,7 +170,7 @@ foreach ($events as $event) {
         <div class="content"> 
             <form action="controllers/addressbookController.php" method="post" class="edit-form">
                 <input type="button" class="display-create" value="Add Contact">
-                <div class="create-customer" style="display:none"> 
+                <div class="create-contact" style="display:none"> 
                     <h2>Create New</h2>
                     <input class="remove-display" type="button" value="-" title="Clear Fields and Close">
                     <span class="form-info"><p>Fields marked with an asterisk (*) are required.</p></span>
@@ -350,7 +350,7 @@ foreach ($events as $event) {
                         <label for="notes">Notes</label> 
                         <textarea class="notes" name="notes" placeholder="Remember something about them here&hellip;" title="Add a note about them here"></textarea> 
                     </div>
-                    <div class="customer-controls"> 
+                    <div class="contact-controls"> 
                         <input type="submit" name="create" onclick="return verifyCreate()" value="Create" class="submit-create"> 
                         <input type="submit" name="delete" onclick="return verifyDelete()" value="Delete" style="display:none;" class="submit-delete"> 
                         <input type="hidden" name="submit" value="Create" class="submit-type">
