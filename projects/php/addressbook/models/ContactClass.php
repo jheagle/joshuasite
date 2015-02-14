@@ -39,7 +39,7 @@ class Contact {
 
     public function __get($property) {
         if (isset($this->{$property}) && $property !== 'db') {
-            return sanitizeOutput($this->{$property});
+            return $this->db->sanitizeOutput($this->{$property});
         }
     }
 
@@ -51,7 +51,7 @@ class Contact {
         } elseif (preg_match('/^(address|phone_number)/', $property)) {
             $this->add_{$property}($value);
         } elseif (property_exists($this, $property) && $property !== 'db') {
-            $this->{$property} = $this->sanitize_output($value);
+            $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
 
@@ -139,7 +139,7 @@ class Contact {
             } elseif (is_object($var) && method_exists($var, 'get_as_json')) {
                 $var = $var->get_as_json();
             } else {
-                $var = sanitizeOutput($var);
+                $var = $this->db->sanitizeOutput($var);
             }
         }
         return $vars;
@@ -154,14 +154,14 @@ class Contact {
                             FROM `{$this->db}`.`{$table}`";
 
             while ($row = $this->db->tri_fetch_assoc($query)) {
-                $contact_list[] = new contact($row['id'], sanitizeOutput($row['first_name']), sanitizeOutput($row['middle_name']), sanitizeOutput($row['last_name']));
+                $contact_list[] = new contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
             }
         } else {
             $query = "SELECT `id`, `first_name`, `middle_name`, `last_name`, `email`, `notes`
                             FROM `{$this->db}`.`{$table}`";
 
             while ($row = $this->db->tri_fetch_assoc($query)) {
-                $contact_list[] = new contact($row['id'], sanitizeOutput($row['first_name']), sanitizeOutput($row['middle_name']), sanitizeOutput($row['last_name']), null, null, sanitizeOutput($row['email']), sanitizeOutput($row['notes']));
+                $contact_list[] = new contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), null, null, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
             }
 
             foreach ($contact_list as &$contact) {
@@ -217,7 +217,7 @@ class Contact {
     }
 
     public function search_contact($name = "") {
-        $contact_list = $this->retrieve_contacts_by_ids($this->search_contact_ids(sanitizeInput($name)));
+        $contact_list = $this->retrieve_contacts_by_ids($this->search_contact_ids($this->db->sanitizeInput($name)));
         if (is_array($contact_list)) {
             usort($contact_list, array($this, "compare_contacts"));
         }
@@ -338,7 +338,7 @@ class Contact {
                            WHERE `id`={$contact_id}";
 
             $row = $this->db->tri_fetch_assoc($query);
-            return new contact(sanitizeOutput($contact_id), sanitizeOutput($row['first_name']), sanitizeOutput($row['middle_name']), sanitizeOutput($row['last_name']));
+            return new contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
         } else {
             $addr = new contact_address(-1, $contact_id);
             $address = $addr->get_all_contact_addresses();
@@ -349,7 +349,7 @@ class Contact {
                            WHERE `id`={$contact_id}";
 
             $row = $this->db->tri_fetch_assoc($query);
-            return new contact(sanitizeOutput($contact_id), sanitizeOutput($row['first_name']), sanitizeOutput($row['middle_name']), sanitizeOutput($row['last_name']), $address, $phone_number, sanitizeOutput($row['email']), sanitizeOutput($row['notes']));
+            return new contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), $address, $phone_number, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
         }
     }
 
@@ -479,13 +479,13 @@ class ContactAddress {
 
     public function __get($property) {
         if (isset($this->{$property}) && $property !== 'db') {
-            return sanitizeOutput($this->{$property});
+            return $this->db->sanitizeOutput($this->{$property});
         }
     }
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
-            $this->{$property} = $this->sanitize_output($value);
+            $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
 
@@ -507,7 +507,7 @@ class ContactAddress {
             if (is_object($var) && method_exists($var, 'get_as_json')) {
                 $var = $var->get_as_json();
             } else {
-                $var = sanitizeOutput($var);
+                $var = $this->db->sanitizeOutput($var);
             }
         }
         return $vars;
@@ -605,7 +605,7 @@ class ContactAddress {
                 $province = isset($row['province']) ? $row['province'] : $this->province;
                 $country = isset($row['country']) ? $row['country'] : $this->country;
                 $postal_code = isset($row['postal_code']) ? $row['postal_code'] : $this->postal_code;
-                $addresses[] = new contact_address(sanitizeOutput($id), sanitizeOutput($contact_id), sanitizeOutput($street), sanitizeOutput($city), sanitizeOutput($province), sanitizeOutput($country), sanitizeOutput($postal_code));
+                $addresses[] = new contact_address($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($street), $this->db->sanitizeOutput($city), $this->db->sanitizeOutput($province), $this->db->sanitizeOutput($country), $this->db->sanitizeOutput($postal_code));
             }
             return $addresses;
         }
@@ -618,7 +618,7 @@ class ContactAddress {
                         FROM `{$this->db}`.`{$table}`
                        WHERE `id`={$id}";
         $row = $this->db->tri_fetch_assoc($query);
-        return new contact_address($id, sanitizeOutput($row['contact_id']), sanitizeOutput($row['street']), sanitizeOutput($row['city']), sanitizeOutput($row['province']), sanitizeOutput($row['country']), sanitizeOutput($row['postal_code']));
+        return new contact_address($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['street']), $this->db->sanitizeOutput($row['city']), $this->db->sanitizeOutput($row['province']), $this->db->sanitizeOutput($row['country']), $this->db->sanitizeOutput($row['postal_code']));
     }
 
     public function update_contact_address() {
@@ -678,13 +678,13 @@ class ContactPhoneNumber {
 
     public function __get($property) {
         if (isset($this->{$property}) && $property !== 'db') {
-            return sanitizeOutput($this->{$property});
+            return $this->db->sanitizeOutput($this->{$property});
         }
     }
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
-            $this->{$property} = $this->sanitize_output($value);
+            $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
 
@@ -706,7 +706,7 @@ class ContactPhoneNumber {
             if (is_object($var) && method_exists($var, 'get_as_json')) {
                 $var = $var->get_as_json();
             } else {
-                $var = sanitizeOutput($var);
+                $var = $this->db->sanitizeOutput($var);
             }
         }
         return $vars;
@@ -777,7 +777,7 @@ class ContactPhoneNumber {
                 $contact_id = isset($row['contact_id']) ? $row['contact_id'] : $this->contact_id;
                 $phone_type = isset($row['phone_type']) ? $row['phone_type'] : $this->phone_type;
                 $phone_number = isset($row['phone_number']) ? $row['phone_number'] : $this->phone_number;
-                $phone_numbers[] = new contact_phone_number(sanitizeOutput($id), sanitizeOutput($contact_id), sanitizeOutput($phone_type), sanitizeOutput($phone_number));
+                $phone_numbers[] = new contact_phone_number($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($phone_type), $this->db->sanitizeOutput($phone_number));
             }
 
             return $phone_numbers;
@@ -791,7 +791,7 @@ class ContactPhoneNumber {
                         FROM `{$this->db}`.`{$table}`
                        WHERE `id`={$id}";
         $row = $this->db->tri_fetch_assoc($query);
-        return new contact_phone_number($id, sanitizeOutput($row['contact_id']), sanitizeOutput($row['phone_type']), sanitizeOutput($row['phone_number']));
+        return new contact_phone_number($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['phone_type']), $this->db->sanitizeOutput($row['phone_number']));
     }
 
     public function update_contact_phone_number() {

@@ -12,7 +12,7 @@ class tracking {
     private $acting_class;
     private $class_id;
 
-    public function __construct($db, $app_user = "", $action = "Changes occurred.", $acting_class = "tracking", $class_id = -1) {
+    public function __construct(&$db, $app_user = "", $action = "Changes occurred.", $acting_class = "tracking", $class_id = -1) {
         $this->db = $db;
         $this->id = -1;
         $this->date_time = date('m/d/y h:i:s', time());
@@ -22,50 +22,16 @@ class tracking {
         $this->set_class_id($class_id);
     }
 
-    public function get_date_time() {
-        if (isset($this->date_time) && !empty($this->date_time)) {
-            return sanitizeOutput($this->date_time);
+    public function __get($property) {
+        if (isset($this->{$property}) && $property !== 'db') {
+            return $this->db->sanitizeOutput($this->{$property});
         }
     }
 
-    public function get_app_user() {
-        if (isset($this->app_user) && !empty($this->app_user)) {
-            return sanitizeOutput($this->app_user);
+    public function set($property, $value) {
+        if (property_exists($this, $property) && $property !== 'db') {
+            $this->{$property} = gettype($value) === 'object' ? $this->db->sanitizeInput(get_class($value)) : $this->db->sanitizeInput($value);
         }
-    }
-
-    public function set_app_user($app_user) {
-        $this->app_user = sanitizeInput($app_user);
-    }
-
-    public function get_action() {
-        return sanitizeOutput($this->action);
-    }
-
-    public function set_action($action) {
-        $this->action = sanitizeInput($action);
-    }
-
-    public function get_acting_class() {
-        return sanitizeOutput($this->acting_class);
-    }
-
-    public function set_acting_class($class) {
-        if (gettype($class) == "object") {
-            $this->acting_class = sanitizeInput(get_class($class));
-        } else {
-            $this->acting_class = sanitizeInput($class);
-        }
-    }
-
-    public function get_class_id() {
-        if (isset($this->class_id) && $this->class_id >= 0) {
-            return sanitizeOutput($this->class_id);
-        }
-    }
-
-    public function set_class_id($id) {
-        $this->class_id = sanitizeInput($id);
     }
 
     public function get_events_count($where = "") {
@@ -75,7 +41,7 @@ class tracking {
                           AS `total`
                         FROM `{$this->db}`.`{$table}`
                     {$where}";
-        $row = $this->db->tri_fetch_assoc($query);
+        $row = $this->db->select_assoc($query);
         return $row['total'];
     }
 
@@ -89,7 +55,7 @@ class tracking {
             $query = "INSERT INTO `{$this->db}`.`{$table}` 
                                       (`date_time`,`app_user`,`action`,`acting_class`,`class_id`) 
                                VALUES (NOW(),'{$this->app_user}','{$this->action}','{$this->acting_class}',{$this->class_id})";
-            $this->db->tri($query);
+            $this->db->insert($query);
             return $this;
         }
     }
@@ -113,8 +79,8 @@ class tracking {
                     ORDER BY {$order_by} {$direction}
                     {$limit}
                       OFFSET {$offset}";
-        while ($row = $this->db->tri_fetch_assoc($query)) {
-            $row['action'] = sanitizeOutput($row['action']);
+        while ($row = $this->db->select_assoc($query)) {
+            $row['action'] = $this->db->sanitizeOutput($row['action']);
             $logs[] = $row;
         }
 
@@ -170,8 +136,8 @@ class tracking {
             $query = "SELECT `id`{$need} 
                             FROM `{$this->db}`.`{$table}` 
                            WHERE {$have}";
-            while ($row = $this->db->tri_fetch_assoc($query)) {
-                $row['action'] = sanitizeOutput($row['action']);
+            while ($row = $this->db->select_assoc($query)) {
+                $row['action'] = $this->db->sanitizeOutput($row['action']);
                 $logs[] = $row;
             }
 
@@ -179,12 +145,4 @@ class tracking {
         }
     }
 
-}
-
-function sanitizeInput($input) {
-    return $this->db->escape_string(htmlentities(trim($input), ENT_HTML5, 'UTF-8', false));
-}
-
-function sanitizeOutput($output) {
-    return stripslashes(html_entity_decode(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8'));
 }
