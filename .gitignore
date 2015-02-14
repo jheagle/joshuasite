@@ -109,3 +109,5 @@ projects/php/addressbook/resources/dbInfo.php
 projects/php/addressbook/resources/enhanced_argv_header.php
 robots.txt
 sitemap.xml
+/joshuasite/nbproject/private/
+/nbproject/private/
