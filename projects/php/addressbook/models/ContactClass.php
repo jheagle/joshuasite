@@ -19,20 +19,17 @@ class Contact {
     public function __construct(&$db) {
         $props = array();
         $args = func_get_args();
+        $count = count($args);
+        $i = 0;
         $this->id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            $props[] = $prop;
-            if (!preg_match('/^(db|id)/', $prop)) {
+            if ($prop === 'db' && $args[$i] instanceof PDO) {
+                $this->db = $db;
+            } elseif (!preg_match('/^(db|id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+                $this->set($prop, $args[$i]);
+            } elseif (!preg_match('/^(db|id)/', $prop)) {
                 $this->{$prop} = preg_match('/^(address|phone_number)/', $prop) ? array() : "";
-            }
-        }
-
-        foreach ($args as $i => $arg) {
-            if ($props[$i] === 'db' && $arg instanceof PDO) {
-                $this->db = $arg;
-            } else {
-                $this->set($props[$i], $arg);
             }
         }
     }
@@ -458,21 +455,18 @@ class ContactAddress {
     public function __construct(&$db) {
         $props = array();
         $args = func_get_args();
+        $count = count($args);
+        $i = 0;
         $this->id = -1;
         $this->contact_id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            $props[] = $prop;
-            if (!preg_match('/^(db|id|contact_id)/', $prop)) {
+            if ($prop === 'db' && $args[$i] instanceof PDO) {
+                $this->db = $db;
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+                $this->set($prop, $args[$i]);
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
                 $this->{$prop} = "";
-            }
-        }
-
-        foreach ($args as $i => $arg) {
-            if ($props[$i] === 'db' && $arg instanceof PDO) {
-                $this->db = $arg;
-            } else {
-                $this->set($props[$i], $arg);
             }
         }
     }
@@ -657,21 +651,18 @@ class ContactPhoneNumber {
     public function __construct(&$db) {
         $props = array();
         $args = func_get_args();
+        $count = count($args);
+        $i = 0;
         $this->id = -1;
         $this->contact_id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            $props[] = $prop;
-            if (!preg_match('/^(db|id|contact_id)/', $prop)) {
+            if ($prop === 'db' && $args[$i] instanceof PDO) {
+                $this->db = $db;
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+                $this->set($prop, $args[$i]);
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
                 $this->{$prop} = "";
-            }
-        }
-
-        foreach ($args as $i => $arg) {
-            if ($props[$i] === 'db' && $arg instanceof PDO) {
-                $this->db = $arg;
-            } else {
-                $this->set($props[$i], $arg);
             }
         }
     }
