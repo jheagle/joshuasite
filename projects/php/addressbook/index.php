@@ -1,14 +1,17 @@
 <?php
 session_start();
-require_once('models/CustomerClass.php');
-$contact = new Contact();
-$contacts = $contact->get_all_contacts();
+require_once('models/ContactClass.php');
+$db = new DBConnect('', '', '', '', false);
+$contact = new Contact($db);
+$contacts = array();
+$contacts = $contact->get_all_contacts(true);
 $contactList = "";
 foreach ($contacts as $cust) {
     $contactList .= "<option value='{$cust->id}'>{$cust->last_name}, {$cust->first_name} {$cust->middle_name}</option>";
 }
 
-$tracking = new Tracking(isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
+$tracking = new Tracking($db, isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
+$events = array();
 $events = $tracking->get_all_events(10, 0);
 $trackingList = "";
 foreach ($events as $event) {
@@ -421,7 +424,7 @@ foreach ($events as $event) {
         <div id="spinner-container"></div>
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
         <script>
-            window.jQuery || document.write('<script src="js/vendor/jquery-1.11.0.min.js"><\/script>');
+                            window.jQuery || document.write('<script src="js/vendor/jquery-1.11.0.min.js"><\/script>');
         </script>
         <script src="js/spin.min.js"></script>
         <script src="js/main.min.js"></script>

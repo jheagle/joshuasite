@@ -1,6 +1,6 @@
 <?php
 
-require_once($_SERVER["DOCUMENT_ROOT"] . '\dbConnectClass.php');
+require_once('dbConnectClass.php');
 
 class Tracking {
 
@@ -15,8 +15,8 @@ class Tracking {
     public function __construct(&$db) {
         $args = func_get_args();
         $count = count($args);
-        $i = -1;
-        $this->id = 0;
+        $i = 0;
+        $this->id = -1;
         $this->date_time = date('m/d/y h:i:s', time());
 
         foreach (get_object_vars($this) as $prop => $val) {
@@ -62,19 +62,19 @@ class Tracking {
         }
     }
 
-    public function get_all_events($limitTemp = "", $offsetTemp = 0, $whereTemp = "", $orderByTemp = "`date_time`", $directionTemp = "DESC") {
+    public function get_all_events($limitTemp = 0, $offsetTemp = 0, $whereTemp = "", $orderByTemp = "`date_time`", $directionTemp = "DESC") {
         $vars = $logs = array();
 
         foreach (get_object_vars($this) as $var => $val) {
             $vars[] = $var;
         }
 
-        $limit = empty($limitTemp) ? '' : 'LIMIT ' . intval($limit);
-        $offset = intval($offsetTemp);
+        $limit = empty($limitTemp) ? '' : 'LIMIT ' . intval($limitTemp);
+        $offset = empty($offsetTemp) ? '' : 'OFFSET ' . intval($offsetTemp);
         $where = preg_match("/(`([a-z0-9])\w+`='?([a-z0-9])\w+'?,?)+/i", $whereTemp) ? 'WHERE ' . $whereTemp : "";
         $orderBy = in_array($orderByTemp, $vars) ? $orderByTemp : "`date_time`";
         $direction = preg_match('/^(DESC|ASC)/i', $directionTemp) ? $directionTemp : 'DESC';
-        $query = "SELECT `date_time`, `action`, `class_id` FROM `tracking` {$where} ORDER BY {$orderBy} {$direction} {$limit} OFFSET {$offset}";
+        $query = "SELECT `date_time`, `action`, `class_id` FROM `tracking` {$where} ORDER BY {$orderBy} {$direction} {$limit} {$offset}";
 
         while ($row = $this->db->select_assoc($query)) {
             $row['action'] = $this->db->sanitizeOutput($row['action']);

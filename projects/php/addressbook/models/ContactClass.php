@@ -1,6 +1,6 @@
 <?php
 
-require_once($_SERVER["DOCUMENT_ROOT"] . '/models/TrackingClass.php');
+require_once('TrackingClass.php');
 
 $tracking = new tracking(isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
 
@@ -17,7 +17,6 @@ class Contact {
     private $notes;
 
     public function __construct(&$db) {
-        $props = array();
         $args = func_get_args();
         $count = count($args);
         $i = 0;
@@ -95,7 +94,7 @@ class Contact {
     public function create_contact() {
         if (!empty($this->first_name) && !empty($this->address) && !empty($this->phone_number)) {
             $table = cameToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$this->db}`.`{$table}` (`first_name`,`middle_name`,`last_name`,`email`,`notes`) VALUES ('{$this->first_name}','{$this->middle_name}','{$this->last_name}','{$this->email}','{$this->notes}')";
+            $query = "INSERT INTO `{$table}` (`first_name`,`middle_name`,`last_name`,`email`,`notes`) VALUES ('{$this->first_name}','{$this->middle_name}','{$this->last_name}','{$this->email}','{$this->notes}')";
             $this->db->tri($query);
             $ids = $this->search_contact_ids(null, true);
             $last_id = count($ids) - 1;
@@ -143,29 +142,27 @@ class Contact {
     }
 
     public function get_all_contacts($summary = true) {
-        $table = get_class($this);
+        $table = $this->db->camelToUnderscore(get_class($this));
         $contact_list = array();
 
         if ($summary) {
-            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name`
-                            FROM `{$this->db}`.`{$table}`";
+            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name` FROM `{$table}`";
 
-            while ($row = $this->db->tri_fetch_assoc($query)) {
-                $contact_list[] = new contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
+            while ($row = $this->db->select_assoc($query)) {
+                $contact_list[] = new Contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
             }
         } else {
-            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name`, `email`, `notes`
-                            FROM `{$this->db}`.`{$table}`";
+            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}`";
 
-            while ($row = $this->db->tri_fetch_assoc($query)) {
-                $contact_list[] = new contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), null, null, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
+            while ($row = $this->db->select_assoc($query)) {
+                $contact_list[] = new Contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), null, null, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
             }
 
             foreach ($contact_list as &$contact) {
-                $addrs = new contact_address(-1, $contact->get_id());
+                $addrs = new ContactAddress(-1, $contact->get_id());
                 $addresses = $addrs->get_all_contact_addresses();
                 $contact->set_addresses($addresses);
-                $phone_nums = new contact_phone_number(-1, $contact->get_id());
+                $phone_nums = new ContactPhoneNumber(-1, $contact->get_id());
                 $phone_numbers = $phone_nums->get_all_contact_phone_numbers();
                 $contact->set_phone_numbers($phone_numbers);
             }
@@ -192,7 +189,7 @@ class Contact {
     }
 
     public function get_contact() {
-        $contact = new contact();
+        $contact = new Contact();
         if (isset($this->id) && $this->id > 0) {
             $contact = $this->retrieve_contact_by_id($this->id, false);
         } else {
@@ -251,13 +248,13 @@ class Contact {
         }
 
         if (!empty($have_value)) {
-            $table = get_class($this);
+            $table = $this->db->camelToUnderscore(get_class($this));
             $have = implode(" AND ", $have_value);
             $query = "SELECT `id` 
-                            FROM `{$this->db}`.`{$table}` 
+                            FROM `{$table}` 
                            WHERE {$have}";
 
-            while ($row = $this->db->tri_fetch_assoc($query)) {
+            while ($row = $this->db->select_assoc($query)) {
                 $contact_ids[] = $row['id'];
             }
         }
@@ -327,26 +324,26 @@ class Contact {
     }
 
     private function retrieve_contact_by_id($contact_id, $summary = true) {
-        $table = get_class($this);
+        $table = $this->db->camelToUnderscore(get_class($this));
         $contact_id = isset($contact_id) ? $contact_id : $this->id;
         if ($summary) {
             $query = "SELECT `first_name`, `middle_name`, `last_name` 
-                            FROM `{$this->db}`.`{$table}` 
+                            FROM `{$table}` 
                            WHERE `id`={$contact_id}";
 
-            $row = $this->db->tri_fetch_assoc($query);
-            return new contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
+            $row = $this->db->select_assoc($query);
+            return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
         } else {
-            $addr = new contact_address(-1, $contact_id);
+            $addr = new ContactAddress(-1, $contact_id);
             $address = $addr->get_all_contact_addresses();
-            $phone_num = new contact_phone_number(-1, $contact_id);
+            $phone_num = new ContactPhoneNumber(-1, $contact_id);
             $phone_number = $phone_num->get_all_contact_phone_numbers();
             $query = "SELECT `first_name`, `middle_name`, `last_name`, `email`, `notes` 
-                            FROM `{$this->db}`.`{$table}` 
+                            FROM `{$table}` 
                            WHERE `id`={$contact_id}";
 
-            $row = $this->db->tri_fetch_assoc($query);
-            return new contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), $address, $phone_number, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
+            $row = $this->db->select_assoc($query);
+            return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), $address, $phone_number, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
         }
     }
 
@@ -354,8 +351,8 @@ class Contact {
         if (isset($this->id) && $this->id > 0 && !empty($this->first_name) &&
                 !empty($this->last_name) && !empty($this->address) && !empty($this->phone_number['work'])) {
             $temp_contact = $this->search_contact();
-            $table = get_class($this);
-            $query = "UPDATE `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "UPDATE `{$table}`
                             SET `first_name`='{$this->first_name}',`middle_name`='{$this->middle_name}',`last_name`='{$this->last_name}',`email`='{$this->email}',`notes`='{$this->notes}' 
                             WHERE `id`={$this->id}";
             $this->db->tri($query);
@@ -368,7 +365,7 @@ class Contact {
                 }
             }
 
-            $temp_addr = new contact_address(-1, $this->id);
+            $temp_addr = new ContactAddress(-1, $this->id);
             $addresses = $temp_addr->get_all_contact_addresses();
             foreach ($addresses as &$address) {
                 if (!in_array($address->get_id(), $address_ids)) {
@@ -395,7 +392,7 @@ class Contact {
                 }
             }
 
-            $temp_phone = new contact_phone_number(-1, $this->id);
+            $temp_phone = new ContactPhoneNumber(-1, $this->id);
             $phones = $temp_phone->get_all_contact_phone_numbers();
 
             foreach ($phones as &$phone) {
@@ -430,8 +427,8 @@ class Contact {
                 }
             }
 
-            $table = get_class($this);
-            $query = "DELETE FROM `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "DELETE FROM `{$table}`
                                 WHERE `id`={$this->id}";
             $this->db->tri($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
@@ -453,7 +450,6 @@ class ContactAddress {
     private $postal_code;
 
     public function __construct(&$db) {
-        $props = array();
         $args = func_get_args();
         $count = count($args);
         $i = 0;
@@ -485,8 +481,8 @@ class ContactAddress {
 
     public function create_contact_address() {
         if (isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->province) && !empty($this->country) && !empty($this->postal_code)) {
-            $table = get_class($this);
-            $query = "INSERT INTO `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "INSERT INTO `{$table}`
                                       (`contact_id`,`street`,`city`,`province`,`country`,`postal_code`) 
                                VALUES ({$this->contact_id},'{$this->street}','{$this->city}','{$this->province}','{$this->country}','{$this->postal_code}')";
             $this->db->tri($query);
@@ -518,7 +514,7 @@ class ContactAddress {
     }
 
     public function get_contact_address() {
-        $address = new contact_address();
+        $address = new ContactAddress();
         if (isset($this->id) && $this->id > 0) {
             $address = $this->retrieve_address_by_id();
         } else {
@@ -583,15 +579,15 @@ class ContactAddress {
         }
 
         if (!empty($have_value)) {
-            $table = get_class($this);
+            $table = $this->db->camelToUnderscore(get_class($this));
             $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
             $have = implode(" AND ", $have_value);
             $query = "SELECT `id`{$needs}
-                            FROM `{$this->db}`.`{$table}`
+                            FROM `{$table}`
                            WHERE {$have}";
 
 
-            while ($row = $this->db->tri_fetch_assoc($query)) {
+            while ($row = $this->db->select_assoc($query)) {
                 $id = isset($row['id']) ? $row['id'] : $this->id;
                 $contact_id = isset($row['contact_id']) ? $row['contact_id'] : $this->contact_id;
                 $street = isset($row['street']) ? $row['street'] : $this->street;
@@ -599,26 +595,26 @@ class ContactAddress {
                 $province = isset($row['province']) ? $row['province'] : $this->province;
                 $country = isset($row['country']) ? $row['country'] : $this->country;
                 $postal_code = isset($row['postal_code']) ? $row['postal_code'] : $this->postal_code;
-                $addresses[] = new contact_address($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($street), $this->db->sanitizeOutput($city), $this->db->sanitizeOutput($province), $this->db->sanitizeOutput($country), $this->db->sanitizeOutput($postal_code));
+                $addresses[] = new ContactAddress($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($street), $this->db->sanitizeOutput($city), $this->db->sanitizeOutput($province), $this->db->sanitizeOutput($country), $this->db->sanitizeOutput($postal_code));
             }
             return $addresses;
         }
     }
 
     private function retrieve_address_by_id($id = null) {
-        $table = get_class($this);
+        $table = $this->db->camelToUnderscore(get_class($this));
         $id = isset($id) ? $id : $this->id;
         $query = "SELECT `contact_id`,`street`,`city`,`province`,`country`,`postal_code` 
-                        FROM `{$this->db}`.`{$table}`
+                        FROM `{$table}`
                        WHERE `id`={$id}";
-        $row = $this->db->tri_fetch_assoc($query);
-        return new contact_address($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['street']), $this->db->sanitizeOutput($row['city']), $this->db->sanitizeOutput($row['province']), $this->db->sanitizeOutput($row['country']), $this->db->sanitizeOutput($row['postal_code']));
+        $row = $this->db->select_assoc($query);
+        return new ContactAddress($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['street']), $this->db->sanitizeOutput($row['city']), $this->db->sanitizeOutput($row['province']), $this->db->sanitizeOutput($row['country']), $this->db->sanitizeOutput($row['postal_code']));
     }
 
     public function update_contact_address() {
         if (isset($this->id) && $this->id > 0 && isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->country) && !empty($this->postal_code)) {
-            $table = get_class($this);
-            $query = "UPDATE `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "UPDATE `{$table}`
                              SET `street`='{$this->street}',`city`='{$this->city}',`province`='{$this->province}', `country`='($this->country}', `postal_code`='{$this->postal_code}' 
                            WHERE `id`={$this->id}";
             $this->db->tri($query);
@@ -629,8 +625,8 @@ class ContactAddress {
 
     public function delete_contact_address() {
         if (isset($this->id) && $this->id > 0) {
-            $table = get_class($this);
-            $query = "DELETE FROM `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "DELETE FROM `{$table}`
                                 WHERE `id`={$this->id}";
             $this->db->tri($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
@@ -649,7 +645,6 @@ class ContactPhoneNumber {
     private $phone_number;
 
     public function __construct(&$db) {
-        $props = array();
         $args = func_get_args();
         $count = count($args);
         $i = 0;
@@ -681,8 +676,8 @@ class ContactPhoneNumber {
 
     public function create_contact_phone_number() {
         if (isset($this->contact_id) && $this->contact_id >= 0 && !empty($this->phone_type) && !empty($this->phone_number)) {
-            $table = get_class($this);
-            $query = "INSERT INTO `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "INSERT INTO `{$table}`
                                       (`contact_id`,`phone_type`,`phone_number`) 
                                VALUES ({$this->contact_id},'{$this->phone_type}','{$this->phone_number}')";
             $this->db->tri($query);
@@ -714,7 +709,7 @@ class ContactPhoneNumber {
     }
 
     public function get_contact_phone_number() {
-        $phone_number = new contact_phone_number();
+        $phone_number = new ContactPhoneNumber();
         if (isset($this->id) && $this->id > 0) {
             $phone_number = $this->retrieve_phone_numbers_by_id();
         } else {
@@ -756,19 +751,19 @@ class ContactPhoneNumber {
         }
 
         if (!empty($have_value)) {
-            $table = get_class($this);
+            $table = $this->db->camelToUnderscore(get_class($this));
             $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
             $have = implode(" AND ", $have_value);
             $query = "SELECT `id`{$needs} 
-                            FROM `{$this->db}`.`{$table}`
+                            FROM `{$table}`
                            WHERE {$have}";
 
-            while ($row = $this->db->tri_fetch_assoc($query)) {
+            while ($row = $this->db->select_assoc($query)) {
                 $id = isset($row['id']) ? $row['id'] : $this->id;
                 $contact_id = isset($row['contact_id']) ? $row['contact_id'] : $this->contact_id;
                 $phone_type = isset($row['phone_type']) ? $row['phone_type'] : $this->phone_type;
                 $phone_number = isset($row['phone_number']) ? $row['phone_number'] : $this->phone_number;
-                $phone_numbers[] = new contact_phone_number($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($phone_type), $this->db->sanitizeOutput($phone_number));
+                $phone_numbers[] = new ContactPhoneNumber($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($phone_type), $this->db->sanitizeOutput($phone_number));
             }
 
             return $phone_numbers;
@@ -776,19 +771,19 @@ class ContactPhoneNumber {
     }
 
     private function retrieve_contact_phone_number_by_id($id = null) {
-        $table = get_class($this);
+        $table = $this->db->camelToUnderscore(get_class($this));
         $id = isset($id) ? $id : $this->id;
         $query = "SELECT `contact_id`, `phone_type`, `phone_number`
-                        FROM `{$this->db}`.`{$table}`
+                        FROM `{$table}`
                        WHERE `id`={$id}";
-        $row = $this->db->tri_fetch_assoc($query);
-        return new contact_phone_number($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['phone_type']), $this->db->sanitizeOutput($row['phone_number']));
+        $row = $this->db->select_assoc($query);
+        return new ContactPhoneNumber($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['phone_type']), $this->db->sanitizeOutput($row['phone_number']));
     }
 
     public function update_contact_phone_number() {
         if (isset($this->id) && $this->id > 0 && isset($this->contact_id) && $this->contact_id > 0 && !empty($this->phone_type) && !empty($this->phone_number)) {
-            $table = get_class($this);
-            $query = "UPDATE `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "UPDATE `{$table}`
                              SET `phone_type`='{$this->phone_type}',`phone_number`='{$this->phone_number}' 
                            WHERE `id`={$this->id}";
             $this->db->tri($query);
@@ -799,8 +794,8 @@ class ContactPhoneNumber {
 
     public function delete_contact_phone_number() {
         if (isset($this->id) && $this->id > 0) {
-            $table = get_class($this);
-            $query = "DELETE FROM `{$this->db}`.`{$table}`
+            $table = $this->db->camelToUnderscore(get_class($this));
+            $query = "DELETE FROM `{$table}`
                                 WHERE `id`={$this->id}";
             $this->db->tri($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->phone_number}", $this, $this->contact_id);

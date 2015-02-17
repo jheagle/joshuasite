@@ -10,20 +10,20 @@ class DBConnect extends PDO {
     private $query;
 
     public function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
-        if ($hostname === 'localhost' && empty($database) && $username === 'root' && empty($password) && $testing) {
-            include_once '../resources/dbInfo';
+        if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
+            include_once('resources/dbInfo.php');
         }
         $this->testing = $testing;
         $this->production = $production;
         $this->queries = 0;
         try {
-            parent::__construct("mysql:host=$hostname;dbname=$database", $username, $password);
-            if ($this->testing === true || $this->production === false) {
-                echo 'Connected to database ($database)';
+            parent::__construct("mysql:host={$hostname};dbname={$database}", $username, $password);
+            if ($this->testing === true && $this->production === false) {
+                echo "Connected to database ({$database})";
             }
             //TODO: ADD LOG
         } catch (PDOException $e) {
-            if ($this->testing === true || $this->production === false) {
+            if ($this->testing === true && $this->production === false) {
                 echo $e->getMessage();
             }
             //TODO: ADD LOG
@@ -34,13 +34,13 @@ class DBConnect extends PDO {
         
     }
 
-    private function exec($queryRaw = '', $type) {
-        $query = empty($queryRaw) ? $this->query : queryValidation($queryRaw, $type);
+    public function exec($queryRaw = '', $type) {
+        $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
         }
         try {
-            if ($this->testing === true || $this->production === false) {
+            if ($this->testing === true && $this->production === false) {
                 echo $query;
             }
             //TODO: ADD LOG
@@ -51,7 +51,7 @@ class DBConnect extends PDO {
             $this->queries += $count;
             return $count;
         } catch (PDOException $e) {
-            if ($this->testing === true || $this->production === false) {
+            if ($this->testing === true && $this->production === false) {
                 echo $e->getMessage();
             }
             //TODO: ADD LOG
@@ -60,32 +60,32 @@ class DBConnect extends PDO {
     }
 
     public function insert($queryRaw = '') {
-        return self::exec($queryRaw, 'insert');
+        return $this->exec($queryRaw, 'insert');
     }
 
     public function update($queryRaw = '') {
-        return self::exec($queryRaw, 'update');
+        return $this->exec($queryRaw, 'update');
     }
 
     public function delete($queryRaw = '') {
-        return self::exec($queryRaw, 'delete');
+        return $this->exec($queryRaw, 'delete');
     }
 
-    private function result($queryRaw = '', $type) {
-        $query = empty($queryRaw) ? $this->query : queryValidation($queryRaw, $type);
+    public function query($queryRaw = '', $type) {
+        $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
         }
         try {
             if ($queryRaw === $this->queryRaw) {
-                $this->result = parent::result($this->query);
+                $this->result = parent::query($this->query);
             }
-            if ($this->testing === true || $this->production === false) {
+            if ($this->testing === true && $this->production === false) {
                 echo $this->query;
             }
             return $this->result;
         } catch (PDOException $e) {
-            if ($this->testing === true || $this->production === false) {
+            if ($this->testing === true && $this->production === false) {
                 echo $e->getMessage();
             }
             //TODO: ADD LOG
@@ -94,7 +94,27 @@ class DBConnect extends PDO {
     }
 
     public function select($queryRaw = '') {
-        return self::result($queryRaw, 'select');
+        return $this->query($queryRaw, 'select');
+    }
+
+    public function select_assoc($queryRaw = '') {
+        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_ASSOC);
+    }
+
+    public function select_num($queryRaw = '') {
+        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_NUM);
+    }
+
+    public function select_both($queryRaw = '') {
+        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_BOTH);
+    }
+
+    public function select_object($queryRaw = '') {
+        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_OBJECT);
+    }
+
+    public function select_lazy($queryRaw = '') {
+        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_LAZY);
     }
 
     private function queryValidation($queryRaw, $type) {
@@ -102,7 +122,7 @@ class DBConnect extends PDO {
             return $this->query;
         }
         $this->queryRaw = $queryRaw;
-        return $this->queryRaw; // remove thise once complete function
+        return $this->query = $this->queryRaw; // remove thise once complete function
         if (!preg_match("`?\d*[a-zA-Z][0-9a-zA-Z$_]*`?", $tableName)) {
             return;
         }
