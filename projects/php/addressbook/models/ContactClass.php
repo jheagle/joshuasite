@@ -92,79 +92,89 @@ class Contact {
     }
 
     public function create_contact() {
-        if (!empty($this->first_name) && !empty($this->address) && !empty($this->phone_number)) {
-            $table = cameToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$table}` (`first_name`,`middle_name`,`last_name`,`email`,`notes`) VALUES ('{$this->first_name}','{$this->middle_name}','{$this->last_name}','{$this->email}','{$this->notes}')";
-            $this->db->tri($query);
-            $ids = $this->search_contact_ids(null, true);
-            $last_id = count($ids) - 1;
+        $columns = $values = array();
+        $required = array('first_name', 'address', 'phone_number');
 
-            $this->id = $ids[$last_id];
-            $GLOBALS['tracking']->add_event("Created {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
-            foreach ($this->address as $address) {
-                $address->set_contact_id($this->id);
-                $address->create_contact_address();
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($prop !== 'id' && $prop !== 'db' && (!isset($val) || empty($val) || $val < 0) && in_array($prop, $required)) {
+                return null;
+            } elseif ($prop !== 'id' && $prop !== 'db') {
+                $columns[] = "`{$prop}`";
+                $values[] = "'{$val}'";
             }
-
-            foreach ($this->phone_number as $phone_type => &$phone_number) {
-                foreach ($phone_number as &$number) {
-                    $number->set_contact_id($this->id);
-                    $number->set_phone_type($phone_type);
-                    $number->create_contact_phone_number();
-                }
-            }
-            return $this;
         }
+
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $cols = implode(',', $columns);
+        $vals = implode(',', $values);
+        $this->db->insert("INSERT INTO `{$table}` ({$cols}) VALUES ({$vals})");
+        $this->set('id', end($this->search_contact_ids(null, true)));
+        $GLOBALS['tracking']->add_event("Created {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
+        $this->create_contact_info('address');
+        $this->create_contact_info('phone_number');
+        return $this;
+    }
+
+    private function create_contact_info($type) {
+        if (empty($this->id) || $this->id < 1 || !preg_match("/^(address|phone_number)/", $type)) {
+            return null;
+        }
+        foreach ($this->{$type} as $key => &$val) {
+            if (!is_array($val)) {
+                $val->set('contact_id', $this->id);
+                $val->create_contact_{$type}();
+                continue;
+            }
+            foreach ($key as &$v) {
+                $v->set('contact_id', $this->id);
+                $v->set('phone_type', $key);
+                $v->create_contact_{$type}();
+            }
+        }
+        return $this->{$type};
     }
 
     public function get_as_json() {
-        $vars = get_object_vars($this);
-        foreach ($vars as &$var) {
-            if (is_array($var)) {
-                foreach ($var as &$val) {
-                    if (is_array($val)) {
-                        foreach ($val as &$v) {
-                            if (is_object($v) && method_exists($v, 'get_as_json')) {
-                                $v = $v->get_as_json();
-                            }
-                        }
-                    } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
-                        $val = $val->get_as_json();
-                    }
-                }
-            } elseif (is_object($var) && method_exists($var, 'get_as_json')) {
-                $var = $var->get_as_json();
-            } else {
-                $var = $this->db->sanitizeOutput($var);
+        $ob_vars = get_object_vars($this);
+        foreach ($ob_vars as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
             }
         }
-        return $vars;
+        return json_encode($ob_vars);
+    }
+
+    private function array_to_json($array) {
+        foreach ($array as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
+            }
+        }
+        return $array;
     }
 
     public function get_all_contacts($summary = true) {
         $table = $this->db->camelToUnderscore(get_class($this));
         $contact_list = array();
 
-        if ($summary) {
-            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name` FROM `{$table}`";
+        $query = $summary ? "SELECT `id`, `first_name`, `middle_name`, `last_name` FROM `{$table}`" : "SELECT `id`, `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}`";
 
-            while ($row = $this->db->select_assoc($query)) {
-                $contact_list[] = new Contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
-            }
-        } else {
-            $query = "SELECT `id`, `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}`";
+        while ($row = $this->db->select_assoc($query)) {
+            $contact_list[] = isset($row['email']) && isset($row['notes']) ? new Contact($row['id'], $row['first_name'], $row['middle_name'], $row['last_name'], null, null, $row['email'], $row['notes']) : new Contact($row['id'], $row['first_name'], $row['middle_name'], $row['last_name']);
+        }
 
-            while ($row = $this->db->select_assoc($query)) {
-                $contact_list[] = new Contact($row['id'], $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), null, null, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
-            }
-
+        if (!$summary) {
             foreach ($contact_list as &$contact) {
-                $addrs = new ContactAddress(-1, $contact->get_id());
-                $addresses = $addrs->get_all_contact_addresses();
-                $contact->set_addresses($addresses);
-                $phone_nums = new ContactPhoneNumber(-1, $contact->get_id());
-                $phone_numbers = $phone_nums->get_all_contact_phone_numbers();
-                $contact->set_phone_numbers($phone_numbers);
+                $contact->set('address', $contact->get_contact_info('address'));
+                $contact->set('phone_numbers', $contact->get_contact_info('phone_numbers'));
             }
         }
 
@@ -174,15 +184,32 @@ class Contact {
         return $contact_list;
     }
 
+    public function get_contact_info($type, $contact_id = -1) {
+        if ($contact_id < 1) {
+            $contact_id = $this->id;
+        }
+        $info = $type === 'address' ? new ContactAddress(-1, $contact_id) : new ContactPhoneNumber(-1, $contact_id);
+        $this->set($type, $info->get_all_{$type}());
+        return $this->{$type};
+    }
+
     private function compare_contacts($a, $b) {
-        $result = strcasecmp($a->get_last_name(), $b->get_last_name());
-        if ($result === 0) {
-            $result = strcasecmp($a->get_first_name(), $b->get_first_name());
-            if ($result === 0) {
-                $result = strcasecmp($a->get_middle_name(), $b->get_middle_name());
-                if ($result === 0) {
-                    $result = $a->get_id() < $b->get_id() ? -1 : 1;
-                }
+        for ($i = 0; $i < 4; ++$i) {
+            switch ($i) {
+                case 0:
+                    $result = strcasecmp($a->last_name, $b->last_name);
+                    break;
+                case 1:
+                    $result = strcasecmp($a->first_name, $b->first_name);
+                    break;
+                case 2:
+                    $result = strcasecmp($a->middle_name, $b->middle_name);
+                    break;
+                default:
+                    $result = $a->id < $b->id ? -1 : 1;
+            }
+            if ($result !== 0) {
+                return $result;
             }
         }
         return $result;
@@ -198,14 +225,14 @@ class Contact {
 
             $contact = $contacts[$last_id];
         }
-        $this->set_id($contact->get_id());
-        $this->set_first_name($contact->get_first_name());
-        $this->set_middle_name($contact->get_middle_name());
-        $this->set_last_name($contact->get_last_name());
-        $this->set_addresses($contact->get_addresses());
-        $this->phone_number = $contact->get_phone_numbers();
-        $this->set_email($contact->email);
-        $this->set_notes($contact->notes);
+        $this->set('id', $contact->id);
+        $this->set('first_name', $contact->first_name);
+        $this->set('middle_name', $contact->middle_name);
+        $this->set('last_name', $contact->last_name);
+        $this->set('address', $contact->addresses);
+        $this->set('phone_number', $contact->phone_number);
+        $this->set('email', $contact->email);
+        $this->set('notes', $contact->notes);
 
         return $this;
     }
@@ -274,8 +301,8 @@ class Contact {
                 $addrs = $address->get_all_contact_addresses();
                 if (is_array($addrs)) {
                     foreach ($addrs as $addr) {
-                        if (isset($addr) && $addr->get_contact_id() > 0) {
-                            $addr_cust_ids[] = $addr->get_contact_id();
+                        if (isset($addr) && $addr->contact_id > 0) {
+                            $addr_cust_ids[] = $addr->contact_id;
                         }
                     }
                 }
@@ -296,9 +323,9 @@ class Contact {
                         $nums = $number->get_all_contact_phone_numbers();
                         if (is_array($nums)) {
                             foreach ($nums as $num) {
-                                if (isset($num) && $num->get_contact_id() >
+                                if (isset($num) && $num->contact_id >
                                         0) {
-                                    $phone_cust_ids[] = $num->get_contact_id();
+                                    $phone_cust_ids[] = $num->contact_id;
                                 }
                             }
                         }
@@ -327,9 +354,7 @@ class Contact {
         $table = $this->db->camelToUnderscore(get_class($this));
         $contact_id = isset($contact_id) ? $contact_id : $this->id;
         if ($summary) {
-            $query = "SELECT `first_name`, `middle_name`, `last_name` 
-                            FROM `{$table}` 
-                           WHERE `id`={$contact_id}";
+            $query = "SELECT `first_name`, `middle_name`, `last_name` FROM `{$table}` WHERE `id`={$contact_id}";
 
             $row = $this->db->select_assoc($query);
             return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
@@ -338,9 +363,7 @@ class Contact {
             $address = $addr->get_all_contact_addresses();
             $phone_num = new ContactPhoneNumber(-1, $contact_id);
             $phone_number = $phone_num->get_all_contact_phone_numbers();
-            $query = "SELECT `first_name`, `middle_name`, `last_name`, `email`, `notes` 
-                            FROM `{$table}` 
-                           WHERE `id`={$contact_id}";
+            $query = "SELECT `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}` WHERE `id`={$contact_id}";
 
             $row = $this->db->select_assoc($query);
             return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), $address, $phone_number, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
@@ -352,23 +375,21 @@ class Contact {
                 !empty($this->last_name) && !empty($this->address) && !empty($this->phone_number['work'])) {
             $temp_contact = $this->search_contact();
             $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "UPDATE `{$table}`
-                            SET `first_name`='{$this->first_name}',`middle_name`='{$this->middle_name}',`last_name`='{$this->last_name}',`email`='{$this->email}',`notes`='{$this->notes}' 
-                            WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $query = "UPDATE `{$table}` SET `first_name`='{$this->first_name}',`middle_name`='{$this->middle_name}',`last_name`='{$this->last_name}',`email`='{$this->email}',`notes`='{$this->notes}' WHERE `id`={$this->id}";
+            $this->db->update($query);
             $GLOBALS['tracking']->add_event("Modified {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
 
             $address_ids = array();
             foreach ($this->address as $address) {
-                if ($address->get_id() > 0) {
-                    $address_ids[] = $address->get_id();
+                if ($address->id > 0) {
+                    $address_ids[] = $address->id;
                 }
             }
 
             $temp_addr = new ContactAddress(-1, $this->id);
             $addresses = $temp_addr->get_all_contact_addresses();
             foreach ($addresses as &$address) {
-                if (!in_array($address->get_id(), $address_ids)) {
+                if (!in_array($address->id, $address_ids)) {
                     $address->delete_contact_address();
                 }
             }
@@ -376,7 +397,7 @@ class Contact {
             $addresses_cnt = count($this->address);
 
             for ($i = 0; $i < $addresses_cnt; ++$i) {
-                if ($this->address[$i]->get_id() > 0) {
+                if ($this->address[$i]->id > 0) {
                     $this->address[$i]->update_contact_address();
                 } else {
                     $this->address[$i]->create_contact_address();
@@ -386,8 +407,8 @@ class Contact {
             $phone_ids = array();
             foreach ($this->phone_number as $type => $phone_number) {
                 foreach ($phone_number as $number) {
-                    if ($number->get_id() > 0) {
-                        $phone_ids[] = $number->get_id();
+                    if ($number->id > 0) {
+                        $phone_ids[] = $number->id;
                     }
                 }
             }
@@ -396,7 +417,7 @@ class Contact {
             $phones = $temp_phone->get_all_contact_phone_numbers();
 
             foreach ($phones as &$phone) {
-                if (!in_array($phone->get_id(), $phone_ids)) {
+                if (!in_array($phone->id, $phone_ids)) {
                     $phone->delete_contact_phone_number();
                 }
             }
@@ -404,7 +425,7 @@ class Contact {
             foreach ($this->phone_number as $phone_type => &$phone_number) {
                 $numbers_cnt = count($phone_number);
                 for ($i = 0; $i < $numbers_cnt; ++$i) {
-                    if ($phone_number[$i]->get_id() > 0) {
+                    if ($phone_number[$i]->id > 0) {
                         $phone_number[$i]->update_contact_phone_number();
                     } else {
                         $phone_number[$i]->create_contact_phone_number();
@@ -430,7 +451,7 @@ class Contact {
             $table = $this->db->camelToUnderscore(get_class($this));
             $query = "DELETE FROM `{$table}`
                                 WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $this->db->delete($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
             return $this;
         }
@@ -482,25 +503,38 @@ class ContactAddress {
     public function create_contact_address() {
         if (isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->province) && !empty($this->country) && !empty($this->postal_code)) {
             $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$table}`
-                                      (`contact_id`,`street`,`city`,`province`,`country`,`postal_code`) 
-                               VALUES ({$this->contact_id},'{$this->street}','{$this->city}','{$this->province}','{$this->country}','{$this->postal_code}')";
-            $this->db->tri($query);
+            $query = "INSERT INTO `{$table}` (`contact_id`,`street`,`city`,`province`,`country`,`postal_code`) VALUES ({$this->contact_id},'{$this->street}','{$this->city}','{$this->province}','{$this->country}','{$this->postal_code}')";
+            $this->db->insert($query);
             $GLOBALS['tracking']->add_event("Created {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
             return $this;
         }
     }
 
     public function get_as_json() {
-        $vars = get_object_vars($this);
-        foreach ($vars as &$var) {
-            if (is_object($var) && method_exists($var, 'get_as_json')) {
-                $var = $var->get_as_json();
-            } else {
-                $var = $this->db->sanitizeOutput($var);
+        $ob_vars = get_object_vars($this);
+        foreach ($ob_vars as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
             }
         }
-        return $vars;
+        return json_encode($ob_vars);
+    }
+
+    private function array_to_json($array) {
+        foreach ($array as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
+            }
+        }
+        return $array;
     }
 
     public function get_all_contact_addresses() {
@@ -523,14 +557,14 @@ class ContactAddress {
                 $address = $addr[count($addr) - 1];
             }
         }
-        if ($address->get_id() > 0) {
-            $this->set_id($address->get_id());
-            $this->set_contact_id($address->get_contact_id());
-            $this->set_street($address->get_street());
-            $this->set_city($address->get_city());
-            $this->set_province($address->get_province());
-            $this->set_country($address->get_country());
-            $this->set_postal_code($address->get_postal_code());
+        if ($address->id > 0) {
+            $this->set('id', $address->id);
+            $this->set('contact_id', $address->contact_id);
+            $this->set('street', $address->street);
+            $this->set('city', $address->city);
+            $this->set('province', $address->province);
+            $this->set('country', $address->country);
+            $this->set('postal_code', $address->postal_code);
             return $this;
         }
     }
@@ -582,9 +616,7 @@ class ContactAddress {
             $table = $this->db->camelToUnderscore(get_class($this));
             $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
             $have = implode(" AND ", $have_value);
-            $query = "SELECT `id`{$needs}
-                            FROM `{$table}`
-                           WHERE {$have}";
+            $query = "SELECT `id`{$needs} FROM `{$table}` WHERE {$have}";
 
 
             while ($row = $this->db->select_assoc($query)) {
@@ -604,9 +636,7 @@ class ContactAddress {
     private function retrieve_address_by_id($id = null) {
         $table = $this->db->camelToUnderscore(get_class($this));
         $id = isset($id) ? $id : $this->id;
-        $query = "SELECT `contact_id`,`street`,`city`,`province`,`country`,`postal_code` 
-                        FROM `{$table}`
-                       WHERE `id`={$id}";
+        $query = "SELECT `contact_id`,`street`,`city`,`province`,`country`,`postal_code` FROM `{$table}` WHERE `id`={$id}";
         $row = $this->db->select_assoc($query);
         return new ContactAddress($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['street']), $this->db->sanitizeOutput($row['city']), $this->db->sanitizeOutput($row['province']), $this->db->sanitizeOutput($row['country']), $this->db->sanitizeOutput($row['postal_code']));
     }
@@ -614,10 +644,8 @@ class ContactAddress {
     public function update_contact_address() {
         if (isset($this->id) && $this->id > 0 && isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->country) && !empty($this->postal_code)) {
             $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "UPDATE `{$table}`
-                             SET `street`='{$this->street}',`city`='{$this->city}',`province`='{$this->province}', `country`='($this->country}', `postal_code`='{$this->postal_code}' 
-                           WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $query = "UPDATE `{$table}` SET `street`='{$this->street}',`city`='{$this->city}',`province`='{$this->province}', `country`='($this->country}', `postal_code`='{$this->postal_code}' WHERE `id`={$this->id}";
+            $this->db->update($query);
             $GLOBALS['tracking']->add_event("Modified {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
             return $this;
         }
@@ -626,9 +654,8 @@ class ContactAddress {
     public function delete_contact_address() {
         if (isset($this->id) && $this->id > 0) {
             $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "DELETE FROM `{$table}`
-                                WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $query = "DELETE FROM `{$table}` WHERE `id`={$this->id}";
+            $this->db->delete($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
             return $this;
         }
@@ -677,25 +704,38 @@ class ContactPhoneNumber {
     public function create_contact_phone_number() {
         if (isset($this->contact_id) && $this->contact_id >= 0 && !empty($this->phone_type) && !empty($this->phone_number)) {
             $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$table}`
-                                      (`contact_id`,`phone_type`,`phone_number`) 
-                               VALUES ({$this->contact_id},'{$this->phone_type}','{$this->phone_number}')";
-            $this->db->tri($query);
+            $query = "INSERT INTO `{$table}` (`contact_id`,`phone_type`,`phone_number`) VALUES ({$this->contact_id},'{$this->phone_type}','{$this->phone_number}')";
+            $this->db->insert($query);
             $GLOBALS['tracking']->add_event("Created {$this->phone_number}", $this, $this->contact_id);
             return $this;
         }
     }
 
     public function get_as_json() {
-        $vars = get_object_vars($this);
-        foreach ($vars as &$var) {
-            if (is_object($var) && method_exists($var, 'get_as_json')) {
-                $var = $var->get_as_json();
-            } else {
-                $var = $this->db->sanitizeOutput($var);
+        $ob_vars = get_object_vars($this);
+        foreach ($ob_vars as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
             }
         }
-        return $vars;
+        return json_encode($ob_vars);
+    }
+
+    private function array_to_json($array) {
+        foreach ($array as $prop => &$val) {
+            if (is_array($val)) {
+                $val = $this->array_to_json($val);
+            } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
+                $val = $val->get_as_json();
+            } elseif ($prop != 'db') {
+                $val = $this->{$val};
+            }
+        }
+        return $array;
     }
 
     public function get_all_contact_phone_numbers() {
@@ -718,11 +758,11 @@ class ContactPhoneNumber {
                 $phone_number = $phone_num[count($phone_num) - 1];
             }
         }
-        if ($phone_number->get_id() > 0) {
-            $this->set_id($phone_number->get_id());
-            $this->set_contact_id($phone_number->get_contact_id());
-            $this->set_phone_type($phone_number->get_phone_type());
-            $this->set_phone_number($phone_number->get_phone_number());
+        if ($phone_number->id > 0) {
+            $this->set('id', $phone_number->id);
+            $this->set('contact_id', $phone_number->contact_id);
+            $this->set('phone_type', $phone_number->phone_type);
+            $this->set('phone_number', $phone_number->phone_number);
             return $this;
         }
     }
@@ -786,7 +826,7 @@ class ContactPhoneNumber {
             $query = "UPDATE `{$table}`
                              SET `phone_type`='{$this->phone_type}',`phone_number`='{$this->phone_number}' 
                            WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $this->db->update($query);
             $GLOBALS['tracking']->add_event("Modified {$this->phone_number}", $this, $this->contact_id);
             return $this;
         }
@@ -797,7 +837,7 @@ class ContactPhoneNumber {
             $table = $this->db->camelToUnderscore(get_class($this));
             $query = "DELETE FROM `{$table}`
                                 WHERE `id`={$this->id}";
-            $this->db->tri($query);
+            $this->db->delete($query);
             $GLOBALS['tracking']->add_event("Deleted {$this->phone_number}", $this, $this->contact_id);
             return $this;
         }

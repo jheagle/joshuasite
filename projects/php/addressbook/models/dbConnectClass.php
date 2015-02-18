@@ -193,4 +193,8 @@ class DBConnect extends PDO {
         return ltrim(strtolower(preg_replace('/[A-Z0-9]/', '_$0', $input)), '_');
     }
 
+    function underscoreToCamel($input) {
+        return str_replace(' ', '', ucwords(str_replace('_', ' ', $input)));
+    }
+
 }

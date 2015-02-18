@@ -1,10 +1,10 @@
 <?php
 session_start();
 require_once('models/ContactClass.php');
-$db = new DBConnect('', '', '', '', false);
+$db = new DBConnect('', '', '', '', true);
 $contact = new Contact($db);
 $contacts = array();
-$contacts = $contact->get_all_contacts(true);
+$contacts = $contact->get_all_contacts(false);
 $contactList = "";
 foreach ($contacts as $cust) {
     $contactList .= "<option value='{$cust->id}'>{$cust->last_name}, {$cust->first_name} {$cust->middle_name}</option>";
