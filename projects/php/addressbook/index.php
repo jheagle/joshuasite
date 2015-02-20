@@ -1,17 +1,15 @@
 <?php
 session_start();
 require_once('models/ContactClass.php');
-$db = new DBConnect('', '', '', '', true);
+$db = new DBConnect('', '', '', '', false);
 $contact = new Contact($db);
-$contacts = array();
-$contacts = $contact->get_all_contacts(false);
+$contacts = $contact->get_all_contacts();
 $contactList = "";
 foreach ($contacts as $cust) {
     $contactList .= "<option value='{$cust->id}'>{$cust->last_name}, {$cust->first_name} {$cust->middle_name}</option>";
 }
 
 $tracking = new Tracking($db, isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
-$events = array();
 $events = $tracking->get_all_events(10, 0);
 $trackingList = "";
 foreach ($events as $event) {

@@ -151,13 +151,13 @@ class Contact {
         $q = "";
 
         foreach (get_object_vars($this) as $prop => $val) {
-            $q .= $prop !== 'db' && ($summary && !preg_match('/^(email|notes)/', $prop)) ? "`{$prop}` " : "";
+            $q .=!preg_match('/^(db|address|phone_number|email|notes)/', $prop) || (!$summary && preg_match('/^(email|notes)/', $prop)) ? " `{$prop}`," : "";
         }
 
-        $query = "SELECT {$q}FROM `{$table}`";
+        $query = "SELECT" . rtrim($q, ',') . " FROM `{$table}`";
 
         while ($row = $this->db->select_assoc($query)) {
-            $contact_list[] = new Contact($row['id'], $row['first_name'], $row['middle_name'], $row['last_name'], null, null, $row['email'], $row['notes']);
+            $contact_list[] = $summary ? new Contact($row['id'], $row['first_name'], $row['middle_name'], $row['last_name']) : new Contact($row['id'], $row['first_name'], $row['middle_name'], $row['last_name'], null, null, $row['email'], $row['notes']);
         }
 
         if (!$summary) {
@@ -223,59 +223,20 @@ class Contact {
             }
         }
 
-        if ($only_contact) {
-            return $contact_ids;
-        }
-
-        $contact_addr_ids = $this->search_contact_id_by_addresses($contact_ids);
-        $contact_phone_ids = $this->search_contact_id_by_phone_number($contact_addr_ids);
-
-        return $contact_phone_ids;
+        return $only_contact ? $contact_ids : $this->search_contact_id_by_contact_info('phone_number', $this->search_contact_id_by_contact_info('address', $contact_ids));
     }
 
-    private function search_contact_id_by_addresses($contact_ids = array()) {
-        if (isset($this->address) && !empty($this->address)) {
-            $addr_cust_ids = array();
-            foreach ($this->address as $address) {
-                $addrs = $address->get_all_contact_addresses();
-                if (is_array($addrs)) {
-                    foreach ($addrs as $addr) {
-                        if (isset($addr) && $addr->contact_id > 0) {
-                            $addr_cust_ids[] = $addr->contact_id;
-                        }
-                    }
+    private function search_contact_id_by_contact_info($type, $contact_ids = array(), $arrayIn = null) {
+        $array = is_array($arrayIn) ? $arrayIn : $this->{$type};
+        if (isset($array) && !empty($array)) {
+            $ids = array();
+            foreach ($array as $contact_info) {
+                if (isset($contact_info) && !empty($contact_info)) {
+                    $ids = is_array($contact_info) ? $this->search_contact_id_by_contact_info($type, $contact_ids, $contact_info) : $contact_info->get_all_contact_{$type}(true);
                 }
             }
-            if (!empty($addr_cust_ids)) {
-                $contact_ids = empty($contact_ids) ? $addr_cust_ids : array_intersect($contact_ids, $addr_cust_ids);
-            }
         }
-        return $contact_ids;
-    }
-
-    private function search_contact_id_by_phone_number($contact_ids = array()) {
-        if (isset($this->phone_number)) {
-            $phone_cust_ids = array();
-            foreach ($this->phone_number as $phone_number) {
-                if (isset($phone_number) && !empty($phone_number)) {
-                    foreach ($phone_number as $number) {
-                        $nums = $number->get_all_contact_phone_numbers();
-                        if (is_array($nums)) {
-                            foreach ($nums as $num) {
-                                if (isset($num) && $num->contact_id >
-                                        0) {
-                                    $phone_cust_ids[] = $num->contact_id;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (!empty($phone_cust_ids)) {
-                $contact_ids = empty($contact_ids) ? $phone_cust_ids : array_intersect($contact_ids, $phone_cust_ids);
-            }
-        }
-        return $contact_ids;
+        return empty($contact_ids) ? $ids : array_intersect($contact_ids, $ids);
     }
 
     private function retrieve_contacts_by_ids($contact_ids = array(), $summary = true) {
@@ -289,9 +250,9 @@ class Contact {
         }
     }
 
-    private function retrieve_contact_by_id($contact_id, $summary = true) {
+    private function retrieve_contact_by_id($contact_idIn, $summary = true) {
         $table = $this->db->camelToUnderscore(get_class($this));
-        $contact_id = isset($contact_id) ? $contact_id : $this->id;
+        $contact_id = isset($contact_idIn) ? $contact_idIn : $this->id;
         if ($summary) {
             $query = "SELECT `first_name`, `middle_name`, `last_name` FROM `{$table}` WHERE `id`={$contact_id}";
 
@@ -299,9 +260,9 @@ class Contact {
             return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
         } else {
             $addr = new ContactAddress(-1, $contact_id);
-            $address = $addr->get_all_contact_addresses();
+            $address = $addr->get_all_contact_address();
             $phone_num = new ContactPhoneNumber(-1, $contact_id);
-            $phone_number = $phone_num->get_all_contact_phone_numbers();
+            $phone_number = $phone_num->get_all_contact_phone_number();
             $query = "SELECT `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}` WHERE `id`={$contact_id}";
 
             $row = $this->db->select_assoc($query);
@@ -326,7 +287,7 @@ class Contact {
             }
 
             $temp_addr = new ContactAddress(-1, $this->id);
-            $addresses = $temp_addr->get_all_contact_addresses();
+            $addresses = $temp_addr->get_all_contact_address();
             foreach ($addresses as &$address) {
                 if (!in_array($address->id, $address_ids)) {
                     $address->delete_contact_address();
@@ -353,7 +314,7 @@ class Contact {
             }
 
             $temp_phone = new ContactPhoneNumber(-1, $this->id);
-            $phones = $temp_phone->get_all_contact_phone_numbers();
+            $phones = $temp_phone->get_all_contact_phone_number();
 
             foreach ($phones as &$phone) {
                 if (!in_array($phone->id, $phone_ids)) {
@@ -485,14 +446,23 @@ class ContactAddress {
         return json_encode($ob_vars);
     }
 
-    public function get_all_contact_addresses() {
+    public function get_all_contact_address($contact_ids_only = false) {
         $addresses = array();
         if (isset($this->id) && $this->id > 0) {
             $addresses[] = $this->retrieve_address_by_id();
         } else {
             $addresses = $this->search_contact_address();
         }
-        return $addresses;
+        if (!$contact_ids_only) {
+            return $addresses;
+        }
+        $contact_ids = array();
+        foreach ($addresses as $address) {
+            if ($address->contact_id > 0) {
+                $contact_ids[] = $address->contact_id;
+            }
+        }
+        return $contact_ids;
     }
 
     public function get_contact_address() {
@@ -673,14 +643,23 @@ class ContactPhoneNumber {
         return json_encode($ob_vars);
     }
 
-    public function get_all_contact_phone_numbers() {
+    public function get_all_contact_phone_number($contact_ids_only = false) {
         $phone_numbers = array();
         if (isset($this->id) && $this->id > 0) {
             $phone_numbers[] = $this->retrieve_contact_phone_number_by_id();
         } else {
             $phone_numbers = $this->search_contact_phone_number();
         }
-        return $phone_numbers;
+        if (!$contact_ids_only) {
+            return $phone_numbers;
+        }
+        $contact_ids = array();
+        foreach ($phone_numbers as $phone_number) {
+            if ($phone_number->contact_id > 0) {
+                $contact_ids[] = $phone_number->contact_id;
+            }
+        }
+        return $contact_ids;
     }
 
     public function get_contact_phone_number() {
