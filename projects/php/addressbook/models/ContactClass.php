@@ -253,21 +253,21 @@ class Contact {
     private function retrieve_contact_by_id($contact_idIn, $summary = true) {
         $table = $this->db->camelToUnderscore(get_class($this));
         $contact_id = isset($contact_idIn) ? $contact_idIn : $this->id;
-        if ($summary) {
-            $query = "SELECT `first_name`, `middle_name`, `last_name` FROM `{$table}` WHERE `id`={$contact_id}";
+        $q = "";
 
-            $row = $this->db->select_assoc($query);
-            return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']));
-        } else {
-            $addr = new ContactAddress(-1, $contact_id);
-            $address = $addr->get_all_contact_address();
-            $phone_num = new ContactPhoneNumber(-1, $contact_id);
-            $phone_number = $phone_num->get_all_contact_phone_number();
-            $query = "SELECT `first_name`, `middle_name`, `last_name`, `email`, `notes` FROM `{$table}` WHERE `id`={$contact_id}";
-
-            $row = $this->db->select_assoc($query);
-            return new Contact($this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($row['first_name']), $this->db->sanitizeOutput($row['middle_name']), $this->db->sanitizeOutput($row['last_name']), $address, $phone_number, $this->db->sanitizeOutput($row['email']), $this->db->sanitizeOutput($row['notes']));
+        foreach (get_object_vars($this) as $prop => $val) {
+            $q .=!preg_match('/^(db|address|phone_number|email|notes)/', $prop) || (!$summary && preg_match('/^(email|notes)/', $prop)) ? " `{$prop}`," : "";
         }
+
+        $query = "SELECT" . rtrim($q, ',') . " FROM `{$table}` WHERE `id` = {$contact_id}";
+        $row = $this->db->select_assoc($query);
+
+        if (!$summary) {
+            $address = new ContactAddress(-1, $contact_id);
+            $phone_number = new ContactPhoneNumber(-1, $contact_id);
+        }
+
+        return $summary ? new Contact($contact_id, $row['first_name'], $row['middle_name'], $row['last_name']) : new Contact($contact_id, $row['first_name'], $row['middle_name'], $row['last_name'], $address->get_all_contact_address(), $phone_number->get_all_contact_phone_number(), $row['email'], $row['notes']);
     }
 
     public function update_contact() {
