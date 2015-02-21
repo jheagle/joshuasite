@@ -2,10 +2,10 @@
  * Global / frequent use variables.
  */
 var searchElements = $('.search-form .form-group').find('input, select, textarea'), // detect all inputs for searching
-        customers = $(), // global storage for customers
+        contacts = $(), // global storage for contacts
         target = document.getElementById('spinner-container'), // create location for placing spinner
-        spinner = new Spinner() // initiate spinner for displaying loading time.
-offset = 0, limit = 10000, customerSeq = -1;
+        spinner = new Spinner(); // initiate spinner for displaying loading time.
+offset = 0, limit = 10000, contactSeq = -1;
 
 
 /**
@@ -29,7 +29,7 @@ $(document).ready(function ()
      */
 
     /*
-     * Auto-load the full customer list with backspace in name search
+     * Auto-load the full contact list with backspace in name search
      */
     $('.search-field').bind('keyup change', function () {
         if ($(this).val() === "") {
@@ -40,25 +40,25 @@ $(document).ready(function ()
     /**
      * Actions on submit
      *
-     * Ajax submit form, then retrieve results as a new customer list.
-     * Build the options list from customers.
-     * If none found, offer to create new customer.
+     * Ajax submit form, then retrieve results as a new contact list.
+     * Build the options list from contacts.
+     * If none found, offer to create new contact.
      */
     $('.search-form').submit(function () {
         spinner.spin();
         $('.search-phone').val(removePhoneFormat($('.search-phone').val()));
         target.appendChild(spinner.el);
         $.post($(this).attr('action'), $('.search-form').serialize(), function (data) {
-            $('#customer-list').empty();
+            $('#contact-list').empty();
             if (data.length < 1) {
-                $('#customer-list').html("<option value='-1'>Create New Customer</option>");
+                $('#contact-list').html("<option value='-1'>Create New Contact</option>");
             }
-            if (data.length === 1 && data[0].seq == -1) {
-                customers.push(data[0]);
-                $('#customer-list').html("<option value='-1'>Create Customer: " + data[0].first_name + " " + data[0].middle_name + " " + data[0].last_name + "</option>");
+            if (data.length === 1 && data[0].seq === -1) {
+                contacts.push(data[0]);
+                $('#contact-list').html("<option value='-1'>Create Contact: " + data[0].first_name + " " + data[0].middle_name + " " + data[0].last_name + "</option>");
             } else {
-                $.each(data, function (j, customer) {
-                    $('#customer-list').append("<option value='" + customer.seq + "'>" + customer.last_name + ", " + customer.first_name + " " + customer.middle_name + "</option>");
+                $.each(data, function (j, contact) {
+                    $('#contact-list').append("<option value='" + contact.seq + "'>" + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + "</option>");
                 });
             }
             if (!searchElements.attr('disabled'))
@@ -71,7 +71,7 @@ $(document).ready(function ()
     });
 
     /**
-     * Toggle between search form and customer list.
+     * Toggle between search form and contact list.
      * When toggling, ensure button is aesthetically positioned.
      * Clear fields to reduce posted inputs.
      */
@@ -79,7 +79,7 @@ $(document).ready(function ()
         $(this).addClass("force-right");
         $('.search-form').trigger('reset');
         $('#search-options').slideToggle();
-        $('#customer-list').slideToggle(function () {
+        $('#contact-list').slideToggle(function () {
             if (searchElements.attr('disabled')) {
                 $(".more-filters").removeClass("force-right");
             }
@@ -96,30 +96,30 @@ $(document).ready(function ()
     });
 
     /**
-     * Respond to interaction with the customer list.
-     * Display customer details when a customer has been selected.
+     * Respond to interaction with the contact list.
+     * Display contact details when a contact has been selected.
      */
-    $('#customer-list').on('click, change', function () {
-        if ($('#customer-list option:selected').length) {
-            customerSeq = $('#customer-list option:selected').val(); // Retrieve sequence of selected customer
-            var hasCustomer = false;
+    $('#contact-list').on('click, change', function () {
+        if ($('#contact-list option:selected').length) {
+            contactSeq = $('#contact-list option:selected').val(); // Retrieve sequence of selected contact
+            var hasContact = false;
             offset = 0;
             $('.left-pager').fadeOut();
-            // check if customer is in local list
-            $.each(customers, function (j, customer)
+            // check if contact is in local list
+            $.each(contacts, function (j, contact)
             {
-                if (customer.seq === customerSeq)
+                if (contact.seq === contactSeq)
                 {
-                    hasCustomer = true;
-                    setCustomer(customer);
+                    hasContact = true;
+                    setContact(contact);
                     return;
                 }
             });
-            // search for customer if not stored locally 
-            if (!hasCustomer) {
-                $.post('controllers/AddressbookController.php', {customer_seq: customerSeq}, function (customer) {
-                    customers.push(customer);
-                    setCustomer(customer);
+            // search for contact if not stored locally 
+            if (!hasContact) {
+                $.post('controllers/AddressbookController.php', {contact_seq: contactSeq}, function (contact) {
+                    contacts.push(contact);
+                    setContact(contact);
                     return;
                 }, 'json');
             }
@@ -143,8 +143,8 @@ $(document).ready(function ()
     });
 
     /**
-     * Export a csv representing the current list of customers
-     * 'Flatten' list of customers to a single row each then export.
+     * Export a csv representing the current list of contacts
+     * 'Flatten' list of contacts to a single row each then export.
      */
     $("#export").click(function (e) {
         e.preventDefault();
@@ -185,7 +185,7 @@ $(document).ready(function ()
         $('.remove-phone').trigger('click');
         $('.form-info p').html('Fields marked with an asterisk (*) are required.');
         $(this).fadeOut(function () {
-            $('.create-customer').fadeIn();
+            $('.create-contact').fadeIn();
         });
         $('.form-info h4').html('');
     });
@@ -196,20 +196,20 @@ $(document).ready(function ()
      */
     $('.remove-display').click(function () {
         $('.form-info h4').html('');
-        document.getElementById('customer-list').selectedIndex = -1;
-        customerSeq = -1;
+        document.getElementById('contact-list').selectedIndex = -1;
+        contactSeq = -1;
         $('.edit-form').trigger('reset');
-        $('.customer-seq').remove();
+        $('.contact-seq').remove();
         $('.address-seq').remove();
         $('.phone-seq').remove();
         $('.success-status').removeClass('success-status');
         $('.error-status').removeClass('error-status');
         $('.error-msg').remove();
-        $('.create-customer').fadeOut(function () {
+        $('.create-contact').fadeOut(function () {
             $('.display-create').fadeIn();
-            $('.create-customer h2').html('Create New');
+            $('.create-contact h2').html('Create New');
             $('.submit-create').val('Create');
-            $('.create-customer').removeClass('update');
+            $('.create-contact').removeClass('update');
             $('.submit-delete').fadeOut();
             $('.address-code').removeClass('zip').addClass('postal');
             $('.address-code').attr('placeholder', 'Postal Code');
@@ -369,9 +369,9 @@ $(document).ready(function ()
      * Change view to warn user when they are about to click Delete
      */
     $('.submit-delete').hover(function () {
-        $('.create-customer').addClass('delete')
+        $('.create-contact').addClass('delete')
     }, function () {
-        $('.create-customer').removeClass('delete');
+        $('.create-contact').removeClass('delete');
     }
     );
 
@@ -386,23 +386,23 @@ $(document).ready(function ()
             spinner.spin();
             target.appendChild(spinner.el);
             $.post($(this).attr('action'), $(this).serialize(), function (data) {
-                $('#customer-list').empty();
+                $('#contact-list').empty();
                 if (data.length < 1) {
-                    $('#customer-list').html("<option>No Customers Found</option>");
+                    $('#contact-list').html("<option>No Contacts Found</option>");
                 }
-                $.each(data, function (j, customer) {
-                    $('#customer-list').append('<option value="' + customer.seq + '">' + customer.last_name + ", " + customer.first_name + " " + customer.middle_name + '</option>');
+                $.each(data, function (j, contact) {
+                    $('#contact-list').append('<option value="' + contact.seq + '">' + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + '</option>');
                 });
-                customers = $();
+                contacts = $();
                 spinner.stop();
                 if ($('.submit-type').val() == 'Create') {
                     $('.remove-display').trigger('click');
-                    $('.form-info h4').html('The customer has been created.');
+                    $('.form-info h4').html('The contact has been created.');
                 } else if ($('.submit-type').val() == 'Update') {
-                    $('.form-info p').html('The customer has been updated.');
+                    $('.form-info p').html('The contact has been updated.');
                 } else if ($('.submit-type').val() == 'Delete') {
                     $('.remove-display').trigger('click');
-                    $('.form-info h4').html('The customer has been deleted.');
+                    $('.form-info h4').html('The contact has been deleted.');
                 }
             }, 'json');
         }
@@ -424,13 +424,13 @@ $(document).ready(function ()
     });
 
     /**
-     * Option to display all logs instead of logs per customer
+     * Option to display all logs instead of logs per contact
      * Hide this button when it has been pressed and displayed paged logs.
      */
     $('.display-all').click(function () {
         spinner.spin();
         target.appendChild(spinner.el);
-        customerSeq = -1;
+        contactSeq = -1;
         offset = 0;
         $.post('controllers/LogsController.php', function (data) {
             limit = data;
@@ -441,7 +441,7 @@ $(document).ready(function ()
             }
         });
         $('.left-pager').fadeOut();
-        $.post('controllers/LogsController.php', {customer: customerSeq}, function (data)
+        $.post('controllers/LogsController.php', {contact: contactSeq}, function (data)
         {
             $('.logs tbody').empty();
             if (data.length < 1) {
@@ -467,7 +467,7 @@ $(document).ready(function ()
             if (offset < 10) {
                 offset = 0;
             }
-            $.post('controllers/LogsController.php', {customer: customerSeq, offset: offset}, function (data)
+            $.post('controllers/LogsController.php', {contact: contactSeq, offset: offset}, function (data)
             {
                 var rows = "";
                 $.each(data, function (j, event) {
@@ -499,7 +499,7 @@ $(document).ready(function ()
             target.appendChild(spinner.el);
             offset += 10;
 
-            $.post('controllers/LogsController.php', {customer: customerSeq, offset: offset}, function (data)
+            $.post('controllers/LogsController.php', {contact: contactSeq, offset: offset}, function (data)
             {
                 var rows = "";
                 $.each(data, function (j, event) {
@@ -528,34 +528,34 @@ $(document).ready(function ()
 
 /**
  * 
- * @param {type} customer
+ * @param {type} contact
  * @returns {undefined}
  */
-function setCustomer(customer)
+function setContact(contact)
 {
     var isUpdate = true;
     $('.display-create').trigger('click');
-    $('.create-customer h2').html('Edit ' + customer.first_name);
-    if ($('.name-group .customer-seq').length)
+    $('.create-contact h2').html('Edit ' + contact.first_name);
+    if ($('.name-group .contact-seq').length)
     {
-        $('.name-group .customer-seq').val(customer.seq);
+        $('.name-group .contact-seq').val(contact.seq);
     }
     else
     {
-        $('.name-group').append("<input class='customer-seq' type='hidden' name='customer_seq' value='" + customer.seq + "'>");
+        $('.name-group').append("<input class='contact-seq' type='hidden' name='contact_seq' value='" + contact.seq + "'>");
     }
-    if (customer.seq > 0) {
+    if (contact.seq > 0) {
         $('.submit-create').val('Update');
-        $('.create-customer').removeClass('create');
-        $('.create-customer').addClass('update');
+        $('.create-contact').removeClass('create');
+        $('.create-contact').addClass('update');
         $('.submit-delete').fadeIn();
     } else {
         isUpdate = false;
         $('.submit-create').val('Create');
-        $('.create-customer').removeClass('update');
-        $('.create-customer').addClass('create');
+        $('.create-contact').removeClass('update');
+        $('.create-contact').addClass('create');
         $('.submit-delete').fadeOut();
-        $('.customer-seq').remove();
+        $('.contact-seq').remove();
         $('.address-seq').remove();
         $('.phone-seq').remove();
     }
@@ -563,10 +563,10 @@ function setCustomer(customer)
     $('.error-status').removeClass('error-status');
     $('.error-msg').remove();
     $('.address-code').removeClass('postal').removeClass('zip');
-    $('.create-customer .fname').val(customer.first_name);
-    $('.create-customer .mname').val(customer.middle_name);
-    $('.create-customer .lname').val(customer.last_name);
-    $.each(customer.address, function (j, address) {
+    $('.create-contact .fname').val(contact.first_name);
+    $('.create-contact .mname').val(contact.middle_name);
+    $('.create-contact .lname').val(contact.last_name);
+    $.each(contact.address, function (j, address) {
         if (j > 0) {
             $('.add-address').trigger('click');
         }
@@ -604,7 +604,7 @@ function setCustomer(customer)
         }
     });
     var cnt = 0;
-    $.each(customer.phone_number, function (j, phone_number) {
+    $.each(contact.phone_number, function (j, phone_number) {
         $.each(phone_number, function (i, number) {
             if (cnt > 0) {
                 $('.add-phone').trigger('click');
@@ -624,10 +624,10 @@ function setCustomer(customer)
             ++cnt;
         });
     });
-    $('.create-customer .email').val(customer.email);
-    $('.create-customer .notes').val(customer.notes);
+    $('.create-contact .email').val(contact.email);
+    $('.create-contact .notes').val(contact.notes);
 
-    $.post('controllers/LogsController.php', {count: customer.seq}, function (data) {
+    $.post('controllers/LogsController.php', {count: contact.seq}, function (data) {
         limit = data;
         if (limit > 10) {
             $('.right-pager').fadeIn();
@@ -636,7 +636,7 @@ function setCustomer(customer)
         }
     });
 
-    $.post('controllers/LogsController.php', {customer: customer.seq}, function (data) {
+    $.post('controllers/LogsController.php', {contact: contact.seq}, function (data) {
         var rows = "";
         $.each(data, function (j, event) {
             rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_seq + '</tr>';
@@ -740,9 +740,9 @@ function removePhoneFormat(number) {
 function verifyCreate() {
     $('.sumbit-type').remove();
     $('.submit-type').val('Create');
-    if ($('.customer-seq').length) {
+    if ($('.contact-seq').length) {
         $('.submit-type').val('Update');
-        return confirm("Are you sure you want to modify this customer?");
+        return confirm("Are you sure you want to modify this contact?");
     }
 
     return true;
@@ -755,7 +755,7 @@ function verifyCreate() {
 function verifyDelete() {
     $('.sumbit-type').remove();
     $('.submit-type').val('Delete');
-    return confirm("Are you sure you want to delete this customer?");
+    return confirm("Are you sure you want to delete this contact?");
 }
 
 /**

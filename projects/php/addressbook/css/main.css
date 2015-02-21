@@ -245,7 +245,7 @@ input:hover, select:hover, textarea:hover {
     color: #008000;
 }
 
-.create-customer {
+.create-contact {
     padding: 16px;
     border-radius: 14px;
     background-color: #E6FFE6;
@@ -293,7 +293,7 @@ input:hover, select:hover, textarea:hover {
 
 .name-group .form-group, .street-address .form-group, .city-province
 .form-group, .postal-code .form-group, .phone-numbers .form-group,
-.address-name, .create-customer > h2 {
+.address-name, .create-contact > h2 {
 
     display: inline-block !important;
     vertical-align: top !important;
@@ -316,7 +316,7 @@ input:hover, select:hover, textarea:hover {
     display: block;
 }
 
-.customer-controls {
+.contact-controls {
     width: 100%;
     max-width: 600px;
     text-align: right;

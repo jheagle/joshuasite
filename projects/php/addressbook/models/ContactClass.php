@@ -1,6 +1,6 @@
 <?php
 
-require_once('TrackingClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/TrackingClass.php');
 
 $tracking = new tracking(isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
 

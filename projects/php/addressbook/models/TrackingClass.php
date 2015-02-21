@@ -1,6 +1,5 @@
 <?php
-
-require_once('dbConnectClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
 
 class Tracking {
 

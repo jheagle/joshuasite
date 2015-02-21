@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once('models/ContactClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
 $db = new DBConnect('', '', '', '', false);
 $contact = new Contact($db);
 $contacts = $contact->get_all_contacts();
@@ -36,8 +36,8 @@ foreach ($events as $event) {
             <h1>Address Book</h1> 
         </header>
         <div class="left-side"> 
-            <form action="controllers/searchController.php" method="post" class="search-form" enctype="multipart/form-data">  
-                <h2>Customers</h2>
+            <form action="controllers/SearchController.php" method="post" class="search-form" enctype="multipart/form-data">  
+                <h2>Contacts</h2>
                 <span class="name-search">
                     <label for="search-field">Search a Name</label>
                     <input class="search-field" name="name" type="search" results="5" placeholder="Search a Name" title="Search a Name">
@@ -169,14 +169,14 @@ foreach ($events as $event) {
             </form>
         </div> 
         <div class="content"> 
-            <form action="controllers/addressbookController.php" method="post" class="edit-form">
+            <form action="controllers/AddressbookController.php" method="post" class="edit-form">
                 <input type="button" class="display-create" value="Add Contact">
                 <div class="create-contact" style="display:none"> 
                     <h2>Create New</h2>
                     <input class="remove-display" type="button" value="-" title="Clear Fields and Close">
                     <span class="form-info"><p>Fields marked with an asterisk (*) are required.</p></span>
                     <div class="name-group"> 
-                        <h3>Customer Name</h3> 
+                        <h3>Contact Name</h3> 
                         <div class="form-group"> 
                             <label for="fname">First Name</label> 
                             <div class="required">*
@@ -195,7 +195,7 @@ foreach ($events as $event) {
                         </div> 
                     </div> 
                     <div class="address-group"> 
-                        <h3>Customer Address</h3>
+                        <h3>Contact Address</h3>
                         <div class="address">
                             <h4 class="address-name">Address 1</h4><input class="remove-address" type="button" value="-" title="Remove this Address">
                             <div class="full-address">
@@ -318,7 +318,7 @@ foreach ($events as $event) {
                         <input class="add-address" type="button" value="+" title="Add Another Address"> 
                     </div> 
                     <div class="phone-numbers"> 
-                        <h3>Customer Phone Number</h3>
+                        <h3>Contact Phone Number</h3>
                         <div class="phone-number">
                             <div class="form-group"> 
                                 <label for="phone-type">Phone Type</label> 
@@ -341,7 +341,7 @@ foreach ($events as $event) {
                         <input class="add-phone" type="button" value="+" title="Add Another Phone Number"> 
                     </div> 
                     <div class="email-group"> 
-                        <h3>Customer Email</h3> 
+                        <h3>Contact Email</h3> 
                         <div class="form-group"> 
                             <label for="email">Email</label> 
                             <input class="email" name="email" type="email" placeholder="Email" title="Email" maxlength="60"> 

@@ -11,7 +11,7 @@ class DBConnect extends PDO {
 
     public function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
-            include_once('resources/dbInfo.php');
+            include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
         }
         $this->testing = $testing;
         $this->production = $production;
