@@ -1,9 +1,9 @@
 <?php
 
-require_once($_SERVER["DOCUMENT_ROOT"] . '/models/customer_class.php');
+require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 header('Content-Type: application/json');
 $customers_json = array();
-$customer = new customer();
+$customer = new Contact();
 $customers = $customer->get_all_customers(false);
 foreach ($customers as $cust) {
     $customers_json[] = $cust->get_as_json();

@@ -1,7 +1,7 @@
 <?php
 
 if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
-    require_once($_SERVER["DOCUMENT_ROOT"] . '/models/customer_class.php');
+    require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
     $files = $_FILES['csv-file'];
     $allowedExts = array('csv');
     $types = array('application/vnd.ms-excel', 'text/plain', 'text/csv', 'text/tsv');
@@ -16,10 +16,10 @@ if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
             //echo "Type: ".$files ["type"]."<br>";
             //echo "Size: ".($files ["size"] / 1024)." kB<br>";
             //echo "Temp file: ".$files ["tmp_name"]."<br>";
-            if (file_exists("../resources/" . $files['name'])) {
+            if (file_exists($_SERVER["DOCUMENT_ROOT"] . "/projects/php/addressbook/resources/" . $files['name'])) {
                 //echo $files['name']." already exists. ";
             } else {
-                move_uploaded_file($files['tmp_name'], "../resources/" . $files['name']);
+                move_uploaded_file($files['tmp_name'], $_SERVER["DOCUMENT_ROOT"] . "/projects/php/addressbook/resources/" . $files['name']);
 
                 //echo "Stored in: "."/resources/".$files['name'];
 
@@ -37,7 +37,7 @@ if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
                 $emailDex = 0;
                 $notesDex = 0;
                 $cnt = 0;
-                $file = fopen("../resources/" . $files['name'], 'r');
+                $file = fopen($_SERVER["DOCUMENT_ROOT"] . "/projects/php/addressbook/resources/" . $files['name'], 'r');
                 while (($row = fgetcsv($file)) !== FALSE) {
                     if ($cnt == 0) {
                         // the first row is used as a reference for where the required data is stored.
@@ -75,7 +75,7 @@ if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
     return;
 }
 
-require_once('../models/customer_class.php');
+require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 header('Content-Type: application/json');
 
 $customers_json = array();

@@ -1,6 +1,6 @@
 <?php
 
-require_once($_SERVER["DOCUMENT_ROOT"] . '/models/customer_class.php');
+require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 
 if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST['address']) &&
         !empty($_POST['phone'])) {
@@ -24,7 +24,7 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
         $apartment = empty($_POST['address']['apartment'][$i]) ? "" : $_POST['address']['apartment'][$i] . "-";
         $street = $apartment . $_POST['address']['number'][$i] . " " . $_POST['address']['street'][$i];
         $address_id = isset($_POST['address']['id'][$i]) ? $_POST['address']['id'][$i] : -1;
-        $addresses[] = new customer_address($address_id, $customer_id, $street, $_POST['address']['city'][$i], $_POST['address']['province'][$i], $_POST['address']['country'][$i], $_POST['address']['postal'][$i]);
+        $addresses[] = new ContactAddress($address_id, $customer_id, $street, $_POST['address']['city'][$i], $_POST['address']['province'][$i], $_POST['address']['country'][$i], $_POST['address']['postal'][$i]);
     }
     $phones = array();
     $has_work_phone = FALSE;
@@ -40,9 +40,9 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
     }
     for ($i = 0; $i < count($_POST['phone']['number']); ++$i) {
         $phone_id = isset($_POST['phone']['id'][$i]) ? $_POST['phone']['id'][$i] : -1;
-        $phones[] = new customer_phone_number($phone_id, $customer_id, $_POST['phone']['type'][$i], $_POST['phone']['number'][$i]);
+        $phones[] = new ContactPhoneNumber($phone_id, $customer_id, $_POST['phone']['type'][$i], $_POST['phone']['number'][$i]);
     }
-    $customer = new customer($customer_id, $_POST['first_name'], $_POST['middle_name'], $_POST['last_name'], $addresses, $phones, $_POST['email'], $_POST['notes']);
+    $customer = new Contact($customer_id, $_POST['first_name'], $_POST['middle_name'], $_POST['last_name'], $addresses, $phones, $_POST['email'], $_POST['notes']);
 
     if (isset($_POST['customer_id']) && isset($_POST['address']['id']) && isset($_POST['phone']['id'])) {
         if (isset($_POST['submit']) && $_POST['submit'] === 'Update') {
@@ -55,7 +55,7 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
     }
 
     $customers_json = array();
-    $customer = new customer();
+    $customer = new Contact();
     $customers = $customer->get_all_customers();
     foreach ($customers as $cust) {
         $customers_json[] = $cust->get_as_json();
@@ -66,7 +66,7 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
 }
 
 if (isset($_POST['customer_id'])) {
-    $customer = new customer($_POST['customer_id']);
+    $customer = new Contact($_POST['customer_id']);
     $customer = $customer->get_customer();
     header('Content-Type: application/json');
     echo json_encode($customer->get_as_json());
