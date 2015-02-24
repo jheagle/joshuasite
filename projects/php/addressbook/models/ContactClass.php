@@ -99,17 +99,17 @@ class Contact {
         }
 
         $contact_info_ids = array();
-        
+
         $idArray = is_array($idArrayIn) ? $idArrayIn : $this->{$type};
         $cnt = count($idArray);
-        
-        $temp_info = $type === 'address' ? new ContactAddress(-1, $this->id) : new ContactPhoneNumber(-1, $this->id);        
+
+        $temp_info = $type === 'address' ? new ContactAddress(-1, $this->id) : new ContactPhoneNumber(-1, $this->id);
         $newContact = empty($strIndex) ? $temp_info->get_all_contact_{$type}() : $temp_info->get_all_contact_{$type}()[$strIndex];
         $origContact = empty($strIndex) ? $contact_infoIn : $contact_infoIn[$strIndex];
         $contact_infoArray = is_array($contact_infoIn) ? $origContact : $newContact;
-        
+
         $array = merge_array($idArray, $contact_infoArray);
-        
+
         foreach ($array as $i => $contact_info) {
             if (preg_match('/^(home|work|cell)/', $i) || is_array($contact_info)) {
                 $this->update_contact_info($type, $contact_infoArray, $idArray, $i);
@@ -122,20 +122,21 @@ class Contact {
             }
             --$cnt;
         }
-        
+
         return $this->{$type};
     }
 
     public function delete_contact_info($contact_info) {
-        if (preg_match('/^(ContactAddress|ContactPhoneNumber)/', get_class($contact_info)) && (in_array($contact_info, $this->address) || in_array($contact_info->phone_type, $this->phone_number))) {
-            $type = get_class($contact_info) == "ContactAddress" ? 'address' : 'phone_number';
-            $thisProp = $type === 'address' ? $this->{$type} : $this->{$type}[$contact_info->phone_type];
-            foreach ($this->{$thisProp} as $i => $info) {
-                if ($contact_info == $info) {
-                    $contact_info->delete_contact_{$type}();
-                    unset($this->{$thisProp}[$i]);
-                    return $info;
-                }
+        if (!preg_match('/^(ContactAddress|ContactPhoneNumber)/', get_class($contact_info)) || (!in_array($contact_info, $this->address) && !in_array($contact_info->phone_type, $this->phone_number))) {
+            return null;
+        }
+        $type = get_class($contact_info) == "ContactAddress" ? 'address' : 'phone_number';
+        $thisProp = $type === 'address' ? $this->{$type} : $this->{$type}[$contact_info->phone_type];
+        foreach ($this->{$thisProp} as $i => $info) {
+            if ($contact_info == $info) {
+                $contact_info->delete_contact_{$type}();
+                unset($this->{$thisProp}[$i]);
+                return $info;
             }
         }
     }
@@ -191,15 +192,8 @@ class Contact {
     }
 
     public function get_contact() {
-        $contact = new Contact();
-        if (isset($this->id) && $this->id > 0) {
-            $contact = $this->retrieve_contact_by_id($this->id, false);
-        } else {
-            $contacts = $this->search_contact();
-            $last_id = count($contacts) - 1;
+        $contact = isset($this->id) && $this->id > 0 ? $this->retrieve_contact_by_id($this->id, false) : end($this->search_contact());
 
-            $contact = $contacts[$last_id];
-        }
         foreach (get_object_vars($contact) as $prop => $val) {
             if ($prop !== 'db') {
                 $this->set($prop, $val);
@@ -256,32 +250,37 @@ class Contact {
     }
 
     private function retrieve_contacts_by_ids($contact_ids = array(), $summary = true) {
-        if (!empty($contact_ids)) {
-            $contacts = array();
-
-            foreach ($contact_ids as $contact_id) {
-                $contacts[] = $this->retrieve_contact_by_id($contact_id, $summary);
-            }
-            return $contacts;
+        if (empty($contact_ids)) {
+            return null;
         }
+        $contacts = array();
+
+        foreach ($contact_ids as $contact_id) {
+            $contacts[] = $this->retrieve_contact_by_id($contact_id, $summary);
+        }
+        return $contacts;
     }
 
     private function retrieve_contact_by_id($contact_idIn, $summary = true) {
         $table = $this->db->camelToUnderscore(get_class($this));
-        $contact_id = isset($contact_idIn) ? $contact_idIn : $this->id;
-        $q = "";
+        $id = isset($idIn) ? $idIn : $this->id;
+        $columns = $values = array();
 
         foreach (get_object_vars($this) as $prop => $val) {
-            $q .=!preg_match('/^(db|address|phone_number|email|notes)/', $prop) || (!$summary && preg_match('/^(email|notes)/', $prop)) ? " `{$prop}`," : "";
+            if (!preg_match('/^(db|address|phone_number|email|notes)/', $prop) || (!$summary && preg_match('/^(email|notes)/', $prop))) {
+                $columns[] = "`{$prop}`";
+            }
         }
-
-        $query = "SELECT" . rtrim($q, ',') . " FROM `{$table}` WHERE `id` = {$contact_id}";
-        $values = array("db" => $this->db, "id" => $contact_id) + $this->db->select_assoc($query);
+        $cols = implode(', ', $columns);
+        $row = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id`={$id}");
 
         if (!$summary) {
-            $address = new ContactAddress(-1, $contact_id);
-            $phone_number = new ContactPhoneNumber(-1, $contact_id);
-            $values = array($values['db'], $values['id'], $values['first_name'], $values['middle_name'], $values['last_name'], $address->get_all_contact_address(), $phone_number->get_all_contact_phone_number(), $values['email'], $values['notes']);
+            $row['address'] = new ContactAddress(-1, $contact_id);
+            $row['phone_number'] = new ContactPhoneNumber(-1, $contact_id);
+        }
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            $values[] = isset($row[$prop]) ? $row[$prop] : $val;
         }
 
         $reflect = new ReflectionClass($this);
@@ -289,46 +288,47 @@ class Contact {
     }
 
     public function update_contact() {
-        if (isset($this->id) && $this->id > 0 && !empty($this->first_name) && !empty($this->last_name) && !empty($this->address) && !empty($this->phone_number['work'])) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $set_to = $columns = $changed_col = array();
-            
-            foreach (get_object_vars($this) as $prop => $val) {
-                if (!preg_match('/^db|address|phone_number/', $prop)) {
-                    $columns[] = "`{$prop}`";
-                }
-            }
-            $cols = implode(',', $columns);
-            $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
-            
-            foreach (get_object_vars($this) as $prop => $val) {
-                if ($val != $orig_cols[$prop] && !preg_match('/^db|address|phone_number/', $prop)) {
-                    $changed_col[$prop] = $val;
-                    $GLOBALS['tracking']->add_event("Modified {$this->first_name} {$this->middle_name} {$this->last_name} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->id);
-                }
-            }
-            
-            foreach ($changed_col as $prop => $val) {
-                if ((!isset($val) || empty($val) || $val < 1) && preg_match('/^(id|first_name|last_name)/', $prop)) {
-                    return null;
-                }
-                $set_to[] = "`{$prop}` = '{$val}'";
-            }
-            
-            $set = implode(',', $set_to);
-            $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id`={$this->id}");
-            $this->update_contact_info('address');
-            $this->update_contact_info('phone_number');
-
-            return $this;
+        if (!isset($this->id) || $this->id < 1 || empty($this->first_name) || empty($this->last_name) || empty($this->address) || empty($this->phone_number['work'])) {
+            return null;
         }
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $set_to = $columns = $changed_col = array();
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^db|address|phone_number/', $prop)) {
+                $columns[] = "`{$prop}`";
+            }
+        }
+        $cols = implode(',', $columns);
+        $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($val != $orig_cols[$prop] && !preg_match('/^db|address|phone_number/', $prop)) {
+                $changed_col[$prop] = $val;
+                $GLOBALS['tracking']->add_event("Modified {$this->first_name} {$this->middle_name} {$this->last_name} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->id);
+            }
+        }
+
+        foreach ($changed_col as $prop => $val) {
+            if ((!isset($val) || empty($val) || $val < 1) && preg_match('/^(id|first_name|last_name)/', $prop)) {
+                return null;
+            }
+            $set_to[] = "`{$prop}` = '{$val}'";
+        }
+
+        $set = implode(',', $set_to);
+        $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id`={$this->id}");
+        $this->update_contact_info('address');
+        $this->update_contact_info('phone_number');
+
+        return $this;
     }
 
     public function delete_contact() {
         if (!isset($this->id) || $this->id < 1) {
             return null;
         }
-        
+
         foreach ($this->address as &$address) {
             $address->delete_contact_address();
         }
@@ -411,13 +411,22 @@ class ContactAddress {
     }
 
     public function create_contact_address() {
-        if (isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->province) && !empty($this->country) && !empty($this->postal_code)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$table}` (`contact_id`,`street`,`city`,`province`,`country`,`postal_code`) VALUES ({$this->contact_id},'{$this->street}','{$this->city}','{$this->province}','{$this->country}','{$this->postal_code}')";
-            $this->db->insert($query);
-            $GLOBALS['tracking']->add_event("Created {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->contact_id) || $this->contact_id < 1 || empty($this->street) || empty($this->city) || empty($this->province) || empty($this->country) || empty($this->postal_code)) {
+            return null;
         }
+        $columns = $values = array();
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^db|id/', $prop)) {
+                $columns[] = "`{$prop}`";
+                $values[] = "'{$val}'";
+            }
+        }
+        $cols = implode(', ', $columns);
+        $vals = implode(', ', $values);
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $this->db->insert("INSERT INTO `{$table}` ({$cols}) VALUES ({$vals})");
+        $GLOBALS['tracking']->add_event("Created {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
+        return $this;
     }
 
     public function get_as_json($array = null) {
@@ -435,136 +444,156 @@ class ContactAddress {
     }
 
     public function get_all_contact_address($contact_ids_only = false) {
-        $addresses = array();
-        if (isset($this->id) && $this->id > 0) {
-            $addresses[] = $this->retrieve_address_by_id();
-        } else {
-            $addresses = $this->search_contact_address();
-        }
+        $addresses = isset($this->id) && $this->id > 0 ? $this->retrieve_address_by_id() : $this->search_contact_address();
+
         if (!$contact_ids_only) {
             return $addresses;
         }
+
         $contact_ids = array();
         foreach ($addresses as $address) {
             if ($address->contact_id > 0) {
                 $contact_ids[] = $address->contact_id;
             }
         }
+
         return $contact_ids;
     }
 
     public function get_contact_address() {
-        $address = new ContactAddress();
-        if (isset($this->id) && $this->id > 0) {
-            $address = $this->retrieve_address_by_id();
-        } else {
-            $addr = $this->search_contact_address();
-            if (count($addr) > 0) {
-                $address = $addr[count($addr) - 1];
+        $address = isset($this->id) && $this->id > 0 ? $this->retrieve_address_by_id() : $this->search_contact_address();
+
+        if ($address->id < 1) {
+            return null;
+        }
+
+        foreach (get_object_vars($address) as $prop => $val) {
+            if ($prop !== 'db') {
+                $this->set($prop, $val);
             }
         }
-        if ($address->id > 0) {
-            $this->set('id', $address->id);
-            $this->set('contact_id', $address->contact_id);
-            $this->set('street', $address->street);
-            $this->set('city', $address->city);
-            $this->set('province', $address->province);
-            $this->set('country', $address->country);
-            $this->set('postal_code', $address->postal_code);
-            return $this;
-        }
+
+        return $this;
     }
 
-    private function search_contact_address() {
-        $addresses = array();
+    private function search_contact_ids($nameIn = "", $only_contact = false) {
+        $name = $this->db->sanitizeInput($nameIn);
+        $contact_ids = $have_value = array();
 
-        $need_value = array();
-        $have_value = array();
-
-        if (isset($this->contact_id) && !empty($this->contact_id) && $this->contact_id >
-                0) {
-            $have_value[] = "`contact_id`={$this->contact_id}";
-        } else {
-            $need_value[] = "`contact_id`";
-        }
-
-        if (isset($this->street) && !empty($this->street)) {
-            $have_value[] = "`street` LIKE '%{$this->street}%'";
-        } else {
-            $need_value[] = "`street`";
-        }
-
-        if (isset($this->city) && !empty($this->city)) {
-            $have_value[] = "`city` LIKE '%{$this->city}%'";
-        } else {
-            $need_value[] = "`city`";
-        }
-
-        if (isset($this->province) && !empty($this->province)) {
-            $have_value[] = "`province`='{$this->province}'";
-        } else {
-            $need_value[] = "`province`";
-        }
-
-        if (isset($this->country) && !empty($this->country)) {
-            $have_value[] = "`country` LIKE '%{$this->country}%'";
-        } else {
-            $need_value[] = "`country`";
-        }
-
-        if (isset($this->postal_code) && !empty($this->postal_code)) {
-            $have_value[] = "`postal_code` LIKE '%{$this->postal_code}%'";
-        } else {
-            $need_value[] = "`postal_code`";
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!empty($name) && $prop === 'first_name') {
+                $have_value[] = "MATCH(`first_name`,`middle_name`,`last_name`) AGAINST('{$name}')";
+            } elseif ((!preg_match('/^(db|id|first_name|middle_name|last_name)/', $prop) || (empty($name) && preg_match('/^(first_name|middle_name|last_name)/', $prop))) && isset($val) && !empty($val)) {
+                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
+            }
         }
 
         if (!empty($have_value)) {
             $table = $this->db->camelToUnderscore(get_class($this));
-            $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
             $have = implode(" AND ", $have_value);
-            $query = "SELECT `id`{$needs} FROM `{$table}` WHERE {$have}";
-
+            $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
 
             while ($row = $this->db->select_assoc($query)) {
-                $id = isset($row['id']) ? $row['id'] : $this->id;
-                $contact_id = isset($row['contact_id']) ? $row['contact_id'] : $this->contact_id;
-                $street = isset($row['street']) ? $row['street'] : $this->street;
-                $city = isset($row['city']) ? $row['city'] : $this->city;
-                $province = isset($row['province']) ? $row['province'] : $this->province;
-                $country = isset($row['country']) ? $row['country'] : $this->country;
-                $postal_code = isset($row['postal_code']) ? $row['postal_code'] : $this->postal_code;
-                $addresses[] = new ContactAddress($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($street), $this->db->sanitizeOutput($city), $this->db->sanitizeOutput($province), $this->db->sanitizeOutput($country), $this->db->sanitizeOutput($postal_code));
+                $contact_ids[] = $row['id'];
             }
-            return $addresses;
         }
+
+        return $only_contact ? $contact_ids : $this->search_contact_id_by_contact_info('phone_number', $this->search_contact_id_by_contact_info('address', $contact_ids));
     }
 
-    private function retrieve_address_by_id($id = null) {
+    private function search_contact_address() {
+        $addresses = $need_value = $have_value = array();
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^(db|id)/', $prop) && isset($val) && !empty($val)) {
+                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
+            } elseif ($prop !== 'db') {
+                $need_value[] = "`{$prop}`";
+            }
+        }
+
+        if (empty($have_value)) {
+            return null;
+        }
         $table = $this->db->camelToUnderscore(get_class($this));
-        $id = isset($id) ? $id : $this->id;
-        $query = "SELECT `contact_id`,`street`,`city`,`province`,`country`,`postal_code` FROM `{$table}` WHERE `id`={$id}";
-        $row = $this->db->select_assoc($query);
-        return new ContactAddress($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['street']), $this->db->sanitizeOutput($row['city']), $this->db->sanitizeOutput($row['province']), $this->db->sanitizeOutput($row['country']), $this->db->sanitizeOutput($row['postal_code']));
+        $have = implode(" AND ", $have_value);
+        $needs = empty($need_value) ? "" : ", " . implode(", ", $have_value);
+
+        while ($row = $this->db->select_assoc("SELECT `id`{$needs} FROM `{$table}` WHERE {$have}")) {
+            $values = array();
+            foreach (get_object_vars($this) as $prop => $val) {
+                $values[] = isset($row[$prop]) ? $row[$prop] : $val;
+            }
+            $reflect = new ReflectionClass($this);
+            $addresses[] = $reflect->newInstanceArgs($values);
+        }
+        return $addresses;
+    }
+
+    private function retrieve_address_by_id($idIn = null) {
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $id = isset($idIn) ? $idIn : $this->id;
+        $columns = $values = array();
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^(db|id)/', $prop)) {
+                $columns[] = "`{$prop}`";
+            }
+        }
+        $cols = implode(', ', $columns);
+        $row = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id`={$id}");
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            $values[] = isset($row[$prop]) ? $row[$prop] : $val;
+        }
+
+        $reflect = new ReflectionClass($this);
+        return $reflect->newInstanceArgs($values);
     }
 
     public function update_contact_address() {
-        if (isset($this->id) && $this->id > 0 && isset($this->contact_id) && $this->contact_id > 0 && !empty($this->street) && !empty($this->city) && !empty($this->country) && !empty($this->postal_code)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "UPDATE `{$table}` SET `street`='{$this->street}',`city`='{$this->city}',`province`='{$this->province}', `country`='($this->country}', `postal_code`='{$this->postal_code}' WHERE `id`={$this->id}";
-            $this->db->update($query);
-            $GLOBALS['tracking']->add_event("Modified {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->id) || $this->id < 0 || !isset($this->contact_id) || $this->contact_id < 1 || empty($this->street) || empty($this->city) || empty($this->country) || empty($this->postal_code)) {
+            return null;
         }
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $set_to = $columns = $changed_col = array();
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($prop !== 'db') {
+                $columns[] = "`{$prop}`";
+            }
+        }
+        $cols = implode(',', $columns);
+        $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($val != $orig_cols[$prop] && $prop !== 'db') {
+                $changed_col[$prop] = $val;
+                $GLOBALS['tracking']->add_event("Modified {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->contact_id);
+            }
+        }
+
+        foreach ($changed_col as $prop => $val) {
+            if ((!isset($val) || empty($val) || $val < 1) && preg_match('/^(id|contact_id)/', $prop)) {
+                return null;
+            }
+            $set_to[] = "`{$prop}` = '{$val}'";
+        }
+
+        $set = implode(',', $set_to);
+        $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id`={$this->id}");
+
+        return $this;
     }
 
     public function delete_contact_address() {
-        if (isset($this->id) && $this->id > 0) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "DELETE FROM `{$table}` WHERE `id`={$this->id}";
-            $this->db->delete($query);
-            $GLOBALS['tracking']->add_event("Deleted {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->id) || $this->id < 1) {
+            return null;
         }
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $this->db->delete("DELETE FROM `{$table}` WHERE `id`={$this->id}");
+        $GLOBALS['tracking']->add_event("Deleted {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code}", $this, $this->contact_id);
+        return $this;
     }
 
 }
@@ -608,13 +637,22 @@ class ContactPhoneNumber {
     }
 
     public function create_contact_phone_number() {
-        if (isset($this->contact_id) && $this->contact_id >= 0 && !empty($this->phone_type) && !empty($this->phone_number)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "INSERT INTO `{$table}` (`contact_id`,`phone_type`,`phone_number`) VALUES ({$this->contact_id},'{$this->phone_type}','{$this->phone_number}')";
-            $this->db->insert($query);
-            $GLOBALS['tracking']->add_event("Created {$this->phone_number}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->contact_id) || $this->contact_id < 1 || empty($this->phone_type) || empty($this->phone_number)) {
+            return null;
         }
+        $columns = $values = array();
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^db|id/', $prop)) {
+                $columns[] = "`{$prop}`";
+                $values[] = "'{$val}'";
+            }
+        }
+        $cols = implode(', ', $columns);
+        $vals = implode(', ', $values);
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $this->db->insert("INSERT INTO `{$table}` ({$cols}) VALUES ({$vals})");
+        $GLOBALS['tracking']->add_event("Created {$this->phone_number}", $this, $this->contact_id);
+        return $this;
     }
 
     public function get_as_json($array = null) {
@@ -632,12 +670,8 @@ class ContactPhoneNumber {
     }
 
     public function get_all_contact_phone_number($contact_ids_only = false) {
-        $phone_numbers = array();
-        if (isset($this->id) && $this->id > 0) {
-            $phone_numbers[] = $this->retrieve_contact_phone_number_by_id();
-        } else {
-            $phone_numbers = $this->search_contact_phone_number();
-        }
+        $phone_numbers = isset($this->id) && $this->id > 0 ? $this->retrieve_contact_phone_number_by_id() : $this->search_contact_phone_number();
+
         if (!$contact_ids_only) {
             return $phone_numbers;
         }
@@ -651,98 +685,109 @@ class ContactPhoneNumber {
     }
 
     public function get_contact_phone_number() {
-        $phone_number = new ContactPhoneNumber();
-        if (isset($this->id) && $this->id > 0) {
-            $phone_number = $this->retrieve_phone_numbers_by_id();
-        } else {
-            $phone_num = $this->search_contact_phone_number();
-            if (count($phone_num) > 0) {
-                $phone_number = $phone_num[count($phone_num) - 1];
+        $phone_number = isset($this->id) && $this->id > 0 ? $this->retrieve_phone_numbers_by_id() : end($this->search_contact_phone_number());
+
+        foreach (get_object_vars($phone_number) as $prop => $val) {
+            if ($prop !== 'db') {
+                $this->set($prop, $val);
             }
         }
-        if ($phone_number->id > 0) {
-            $this->set('id', $phone_number->id);
-            $this->set('contact_id', $phone_number->contact_id);
-            $this->set('phone_type', $phone_number->phone_type);
-            $this->set('phone_number', $phone_number->phone_number);
-            return $this;
-        }
+        return $this;
     }
 
     private function search_contact_phone_number() {
-        $phone_numbers = array();
-        $need_value = array();
-        $have_value = array();
+        $phone_numbers = $have_value = $need_value = array();
 
-        if (isset($this->contact_id) && $this->contact_id > 0) {
-            $have_value[] = "`contact_id`={$this->contact_id}";
-        } else {
-            $need_value[] = "`contact_id`";
-        }
-
-        if (isset($this->phone_type) && !empty($this->phone_type)) {
-            $have_value[] = "`phone_type`='{$this->phone_type}'";
-        } else {
-            $need_value[] = "`phone_type`";
-        }
-
-        if (isset($this->phone_number) && !empty($this->phone_number)) {
-            $have_value[] = "`phone_number` LIKE '%{$this->phone_number}%'";
-        } else {
-            $need_value[] = "`phone_number`";
-        }
-
-        if (!empty($have_value)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
-            $have = implode(" AND ", $have_value);
-            $query = "SELECT `id`{$needs} 
-                            FROM `{$table}`
-                           WHERE {$have}";
-
-            while ($row = $this->db->select_assoc($query)) {
-                $id = isset($row['id']) ? $row['id'] : $this->id;
-                $contact_id = isset($row['contact_id']) ? $row['contact_id'] : $this->contact_id;
-                $phone_type = isset($row['phone_type']) ? $row['phone_type'] : $this->phone_type;
-                $phone_number = isset($row['phone_number']) ? $row['phone_number'] : $this->phone_number;
-                $phone_numbers[] = new ContactPhoneNumber($this->db->sanitizeOutput($id), $this->db->sanitizeOutput($contact_id), $this->db->sanitizeOutput($phone_type), $this->db->sanitizeOutput($phone_number));
+        foreach (get_object_vars($this) as $prop => $val) {
+            if (!preg_match('/^(db|id)/', $prop) && isset($val) && (!empty($val) || $val > 0)) {
+                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
+            } elseif ($prop !== 'db') {
+                $need_value[] = "`{$prop}`";
             }
-
-            return $phone_numbers;
         }
+
+        if (empty($have_value)) {
+            return null;
+        }
+
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $have = implode(" AND ", $have_value);
+        $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
+
+        while ($row = $this->db->select_assoc("SELECT `id`{$needs} FROM `{$table}` WHERE {$have}")) {
+            $values = array();
+            foreach (get_object_vars($this) as $prop => $val) {
+                $values[] = isset($row[$prop]) ? $row[$prop] : $val;
+            }
+            $reflect = new ReflectionClass($this);
+            $phone_numbers[] = $reflect->newInstanceArgs($values);
+        }
+
+        return $phone_numbers;
     }
 
-    private function retrieve_contact_phone_number_by_id($id = null) {
+    private function retrieve_contact_phone_number_by_id($idIn = null) {
         $table = $this->db->camelToUnderscore(get_class($this));
-        $id = isset($id) ? $id : $this->id;
-        $query = "SELECT `contact_id`, `phone_type`, `phone_number`
-                        FROM `{$table}`
-                       WHERE `id`={$id}";
-        $row = $this->db->select_assoc($query);
-        return new ContactPhoneNumber($id, $this->db->sanitizeOutput($row['contact_id']), $this->db->sanitizeOutput($row['phone_type']), $this->db->sanitizeOutput($row['phone_number']));
+        $id = isset($idIn) ? $idIn : $this->id;
+        $columns = $values = array();
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($prop !== 'db') {
+                $columns[] = "`$prop'";
+            }
+        }
+        $cols = implode(", ", $columns);
+        $row = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$id}");
+        foreach ($row as $prop => $val) {
+            $values[] = isset($row[$prop]) ? $row[$prop] : $val;
+        }
+        $reflect = new ReflectionClass($this);
+        return $reflect->newInstanceArgs($values);
     }
 
     public function update_contact_phone_number() {
-        if (isset($this->id) && $this->id > 0 && isset($this->contact_id) && $this->contact_id > 0 && !empty($this->phone_type) && !empty($this->phone_number)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "UPDATE `{$table}`
-                             SET `phone_type`='{$this->phone_type}',`phone_number`='{$this->phone_number}' 
-                           WHERE `id`={$this->id}";
-            $this->db->update($query);
-            $GLOBALS['tracking']->add_event("Modified {$this->phone_number}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->id) && $this->id < 1 || !isset($this->contact_id) || $this->contact_id < 1 && empty($this->phone_type) || empty($this->phone_number)) {
+            return null;
         }
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $set_to = $columns = $changed_col = array();
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($prop !== 'db') {
+                $columns[] = "`{$prop}`";
+            }
+        }
+        $cols = implode(',', $columns);
+        $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
+
+        foreach (get_object_vars($this) as $prop => $val) {
+            if ($val != $orig_cols[$prop] && $prop !== 'db') {
+                $changed_col[$prop] = $val;
+                $GLOBALS['tracking']->add_event("Modified {$this->phone_number} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->contact_id);
+            }
+        }
+
+        foreach ($changed_col as $prop => $val) {
+            if ((!isset($val) || empty($val) || $val < 1) && preg_match('/^(id|contact_id)/', $prop)) {
+                return null;
+            }
+            $set_to[] = "`{$prop}` = '{$val}'";
+        }
+
+        $set = implode(',', $set_to);
+        $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id` = {$this->id}");
+
+        return $this;
     }
 
     public function delete_contact_phone_number() {
-        if (isset($this->id) && $this->id > 0) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $query = "DELETE FROM `{$table}`
-                                WHERE `id`={$this->id}";
-            $this->db->delete($query);
-            $GLOBALS['tracking']->add_event("Deleted {$this->phone_number}", $this, $this->contact_id);
-            return $this;
+        if (!isset($this->id) || $this->id < 1) {
+            return null;
         }
+        $table = $this->db->camelToUnderscore(get_class($this));
+        $query = "DELETE FROM `{$table}` WHERE `id` = {$this->id}";
+        $this->db->delete($query);
+        $GLOBALS['tracking']->add_event("Deleted {$this->phone_number}", $this, $this->contact_id);
+        return $this;
     }
 
 }
