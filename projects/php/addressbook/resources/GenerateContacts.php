@@ -2,7 +2,7 @@
 
 require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 
-generate_customers(1000);
+generate_customers();
 
 function generate_customers($amount = 10) {
     for ($i = 0; $i < $amount; ++$i) {

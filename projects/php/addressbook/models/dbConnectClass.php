@@ -182,19 +182,101 @@ class DBConnect extends PDO {
         if (is_array($output)) {
             $new_output = array();
             foreach ($output as $key => $value) {
-                $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
+                if (is_array($value)) {
+                    $new_output[$key] = $this->sanitizeOutput($value);
+                } else {
+                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
+                }
             }
             return $new_output;
         }
         return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
     }
 
-    function camelToUnderscore($input) {
+    public function camelToUnderscore($input) {
         return ltrim(strtolower(preg_replace('/[A-Z0-9]/', '_$0', $input)), '_');
     }
 
-    function underscoreToCamel($input) {
+    public function underscoreToCamel($input) {
         return str_replace(' ', '', ucwords(str_replace('_', ' ', $input)));
+    }
+
+}
+
+class UnitTest {
+
+    private static $instance;
+    private static $breakpoints;
+    private $origFile;
+    private $copyFile;
+    private $currFunction;
+    private $prevData;
+    private $curreData;
+    private $prevLine;
+    private $currLine;
+    private $pause;
+
+    private function __construct() {
+        
+    }
+
+    private function __destruct() {
+        self::$instance = null;
+    }
+
+    public static function instantiateTest() {
+        if (self::$instance == null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function __get($property) {
+        if (!isset($this->{$property})) {
+            return null;
+        }
+        if (is_array($this->{$property})) {
+            $new_output = array();
+            foreach ($this->{$property} as $key => $value) {
+                if (is_array($value)) {
+                    $new_output[$key] = $this->{$property}[$key];
+                } else {
+                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
+                }
+            }
+            return $new_output;
+        }
+        return stripslashes(htmlentities(str_replace('\r', '', $this->{$property}), ENT_HTML5, 'UTF-8', false));
+    }
+
+    public function set($property, $input) {
+        if (!property_exists($this, $property)) {
+            return null;
+        }
+        if (is_array($input)) {
+            $new_input = array();
+            foreach ($input as $key => $value) {
+                $new_input[$key] = addslashes(html_entity_decode(trim($value), ENT_HTML5, 'UTF-8'));
+            }
+            $this->{$property} = $new_input;
+        }
+        $this->{$property} = addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8'));
+    }
+
+    public function traceProcesses() {
+        
+        echo '<br/>CLASS: ' . __CLASS__;
+        echo '<br/>DIR: ' . __DIR__;
+        echo '<br/>FILE: ' . __FILE__;
+        echo '<br/>FUNCTION: ' . __FUNCTION__;
+        echo '<br/>LINE: ' . __LINE__;
+        echo '<br/>METHOD: ' . __METHOD__;
+        echo '<br/>NAMESPACE: ' . __NAMESPACE__;
+        echo '<br/>TRAIT: ' . __TRAIT__;
+    }
+
+    private function __clone() {
+        
     }
 
 }
