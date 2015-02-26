@@ -25,7 +25,7 @@ if (isset($_POST['customer']) && $_POST['customer'] < 0) {
 } else {
     header('Content-Type: application/json');
     $count = isset($_POST['count']) ? "`class_id`='" . intval($_POST['count']) . "'" : '';
-    $db = new DBConnect('', '', '', '', false);
+    $db = DBConnect::instantiateDB('', '', '', '', false);
     $tracking = new Tracking($db, isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
     echo $tracking->get_events_count($count);
     return;

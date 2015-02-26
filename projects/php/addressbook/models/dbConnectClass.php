@@ -1,7 +1,10 @@
 <?php
 
-class DBConnect extends PDO {
+class DBConnect {
 
+    private static $instance;
+    private static $pdoInstance;
+    private $database;
     private $production; // environment
     private $testing; // mode (truly run a query or not)
     private $queries;
@@ -9,50 +12,70 @@ class DBConnect extends PDO {
     private $queryRaw;
     private $query;
 
-    public function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
+    private function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
             include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
         }
+        $this->database = $database;
         $this->testing = $testing;
         $this->production = $production;
         $this->queries = 0;
+        if (!is_array($this->pdoInstance)) {
+            $this->pdoInstance = array();
+        }
         try {
-            parent::__construct("mysql:host={$hostname};dbname={$database}", $username, $password);
-            if ($this->testing === true && $this->production === false) {
-                echo "Connected to database ({$database})";
+            if (!$this->pdoInstance[$database]) {
+                $this->pdoInstance[$database] = new PDO("mysql:host={$hostname};dbname={$database}", $username, $password);
+            }
+            if ($testing && !$production) {
+                $this->consoleOut("Connected to database ({$database})");
             }
             //TODO: ADD LOG
         } catch (PDOException $e) {
-            if ($this->testing === true && $this->production === false) {
-                echo $e->getMessage();
+            if ($testing && !$production) {
+                $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
         }
     }
 
-    public function __destruct() {
+    private function __destruct() {
         
     }
 
-    public function exec($queryRaw = '', $type) {
+    public static function instantiateDB($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
+        if (!is_array(self::$instance)) {
+            self::$instance = array();
+        }
+        if (self::$instance[$database] == null) {
+            self::$instance[$database] = new self($hostname, $database, $username, $password, $testing, $production);
+        }
+        return self::$instance[$database];
+    }
+
+    private function __clone() {
+        
+    }
+
+    public function exec($queryRaw = '', $type = 'insert') {
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
         }
         try {
-            if ($this->testing === true && $this->production === false) {
-                echo $query;
+            if ($this->testing && !$this->production) {
+                $this->consoleOut($query);
             }
             //TODO: ADD LOG
-            if ($this->testing === false) {
-                $count = parent::exec($query);
+            if (!$this->testing && $this->pdoInstance[$this->database]) {
+                $count = $this->pdoInstance[$this->database]->exec($query);
             }
             //TODO: Create psuedo insert and record for testing mode
             $this->queries += $count;
             return $count;
         } catch (PDOException $e) {
-            if ($this->testing === true && $this->production === false) {
-                echo $e->getMessage();
+            if ($this->testing && !$this->production) {
+                $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
             return -1;
@@ -71,22 +94,22 @@ class DBConnect extends PDO {
         return $this->exec($queryRaw, 'delete');
     }
 
-    public function query($queryRaw = '', $type) {
+    public function query($queryRaw = '', $type = 'select') {
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
         }
         try {
-            if ($queryRaw === $this->queryRaw) {
-                $this->result = parent::query($this->query);
+            if ($queryRaw === $this->queryRaw && $this->pdoInstance[$this->database]) {
+                $this->result = $this->pdoInstance[$this->database]->query($this->query);
             }
-            if ($this->testing === true && $this->production === false) {
-                echo $this->query;
+            if ($this->testing && !$this->production) {
+                $this->consoleOut($this->query);
             }
             return $this->result;
         } catch (PDOException $e) {
-            if ($this->testing === true && $this->production === false) {
-                echo $e->getMessage();
+            if ($this->testing && !$this->production) {
+                $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
             return -1;
@@ -98,23 +121,23 @@ class DBConnect extends PDO {
     }
 
     public function select_assoc($queryRaw = '') {
-        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_ASSOC);
+        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_ASSOC) : $this->query($queryRaw, 'select');
     }
 
     public function select_num($queryRaw = '') {
-        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_NUM);
+        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_NUM) : $this->query($queryRaw, 'select');
     }
 
     public function select_both($queryRaw = '') {
-        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_BOTH);
+        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_BOTH) : $this->query($queryRaw, 'select');
     }
 
     public function select_object($queryRaw = '') {
-        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_OBJECT);
+        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_OBJECT) : $this->query($queryRaw, 'select');
     }
 
     public function select_lazy($queryRaw = '') {
-        return $this->query($queryRaw, 'select')->fetch(parent::FETCH_LAZY);
+        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_LAZY) : $this->query($queryRaw, 'select');
     }
 
     private function queryValidation($queryRaw, $type) {
@@ -165,6 +188,14 @@ class DBConnect extends PDO {
             default:
         }
         return $this->query;
+    }
+
+    private function consoleOut($output, $type = 'DB') {
+        if (is_array($output) || is_object($output)) {
+            echo("<script>console.log('{$type}: " . json_encode($output) . "');</script>");
+        } else {
+            echo("<script>console.log('{$type}: " . $output . "');</script>");
+        }
     }
 
     private function sanitizeInput($input, $escape = true) {
@@ -264,7 +295,7 @@ class UnitTest {
     }
 
     public function traceProcesses() {
-        
+
         echo '<br/>CLASS: ' . __CLASS__;
         echo '<br/>DIR: ' . __DIR__;
         echo '<br/>FILE: ' . __FILE__;

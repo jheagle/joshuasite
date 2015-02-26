@@ -1,4 +1,5 @@
 <?php
+
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
 
 class Tracking {
@@ -19,7 +20,7 @@ class Tracking {
         $this->date_time = date('m/d/y h:i:s', time());
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($prop === 'db' && $args[$i] instanceof PDO) {
+            if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
             } elseif (!preg_match('/^(db|id|date_time)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);

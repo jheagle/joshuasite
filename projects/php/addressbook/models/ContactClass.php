@@ -23,7 +23,7 @@ class Contact {
         $this->id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($prop === 'db' && $args[$i] instanceof PDO) {
+            if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
             } elseif (!preg_match('/^(db|id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
