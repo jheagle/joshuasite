@@ -2,7 +2,7 @@
 
 class DBConnect {
 
-    private static $instance;
+    protected static $instance;
     private static $pdoInstance;
     private $database;
     private $production; // environment
@@ -12,7 +12,7 @@ class DBConnect {
     private $queryRaw;
     private $query;
 
-    private function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
+    protected function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
             include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
         }
@@ -39,15 +39,18 @@ class DBConnect {
         }
     }
 
-    private function __destruct() {
+    final private function __destruct() {
         
     }
 
-    public static function instantiateDB($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
+    final public static function instantiateDB($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (!is_array(self::$instance)) {
             self::$instance = array();
         }
         if (self::$instance[$database] == null) {
+            /* $class = get_called_class();
+              $reflect = new ReflectionClass($class);
+              self::$instance[$database] = $reflect->newInstance(func_get_args()); */
             self::$instance[$database] = new self($hostname, $database, $username, $password, $testing, $production);
         }
         return self::$instance[$database];
@@ -57,13 +60,13 @@ class DBConnect {
         
     }
 
-    public function exec($queryRaw = '', $type = 'insert') {
+    private function exec($queryRaw = '', $type = 'insert') {
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
         }
         try {
-            if ($this->testing && !$this->production) {
+            if ($this->testing || !$this->production) {
                 $this->consoleOut($query);
             }
             //TODO: ADD LOG
@@ -74,7 +77,7 @@ class DBConnect {
             $this->queries += $count;
             return $count;
         } catch (PDOException $e) {
-            if ($this->testing && !$this->production) {
+            if ($this->testing || !$this->production) {
                 $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
@@ -94,7 +97,7 @@ class DBConnect {
         return $this->exec($queryRaw, 'delete');
     }
 
-    public function query($queryRaw = '', $type = 'select') {
+    private function query($queryRaw = '', $type = 'select') {
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
@@ -103,12 +106,12 @@ class DBConnect {
             if ($queryRaw === $this->queryRaw && $this->pdoInstance[$this->database]) {
                 $this->result = $this->pdoInstance[$this->database]->query($this->query);
             }
-            if ($this->testing && !$this->production) {
+            if ($this->testing || !$this->production) {
                 $this->consoleOut($this->query);
             }
             return $this->result;
         } catch (PDOException $e) {
-            if ($this->testing && !$this->production) {
+            if ($this->testing || !$this->production) {
                 $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
@@ -146,59 +149,57 @@ class DBConnect {
         }
         $this->queryRaw = $queryRaw;
         return $this->query = $this->queryRaw; // remove thise once complete function
-        if (!preg_match("`?\d*[a-zA-Z][0-9a-zA-Z$_]*`?", $tableName)) {
-            return;
-        }
-        if (!preg_match("(`?\d*[a-zA-Z][0-9,a-z,A-Z$_]*`?,?)+", $columnNames) && !is_array($columnNames)) {
-            return;
-        }
-        if (!preg_match("('?\d*[a-zA-Z][0-9,a-z,A-Z$_]*'?,?)+", $whereClauses) && !is_array($whereClauses)) {
-            return;
-        }
-        if (!preg_match("('?\d*[a-zA-Z][0-9,a-z,A-Z$_]*'?,?)+", $newValues) && !is_array($newValues)) {
-            return;
-        }
-        $table = sanitize_input($tableName, false);
-        $columns = sanitize_input($columnNames, false);
-        $values = sanitize_input($newValues, false);
-        $where = sanitize_input($whereClauses, false);
-        if (is_array($columns)) {
-            $columns = implode(',', $columns);
-        }
-        if (is_array($where)) {
-            $where = implode(',', $where);
-        }
-        if (is_array($values)) {
-            $values = implode('),(', $values);
-        }
-        if (!empty($where)) {
-            $where = " WHERE {$where}";
-        }
-        switch ($type) {
-            case 'select':
-                $query = "SELECT {$columns} FROM {$table}{$where}{$orderBy}{$offset}{$limit}";
-                break;
-            case 'insert':
-                $query = "INSERT INTO {$table}({$columns}) VALUES ({$values}){$where}";
-                break;
-            case 'update':
-                break;
-            case 'delete':
-                break;
-            default:
-        }
-        return $this->query;
+        /*        if (!preg_match("`?\d*[a-zA-Z][0-9a-zA-Z$_]*`?", $tableName)) {
+          return;
+          }
+          if (!preg_match("(`?\d*[a-zA-Z][0-9,a-z,A-Z$_]*`?,?)+", $columnNames) && !is_array($columnNames)) {
+          return;
+          }
+          if (!preg_match("('?\d*[a-zA-Z][0-9,a-z,A-Z$_]*'?,?)+", $whereClauses) && !is_array($whereClauses)) {
+          return;
+          }
+          if (!preg_match("('?\d*[a-zA-Z][0-9,a-z,A-Z$_]*'?,?)+", $newValues) && !is_array($newValues)) {
+          return;
+          }
+          $table = sanitize_input($tableName, false);
+          $columns = sanitize_input($columnNames, false);
+          $values = sanitize_input($newValues, false);
+          $where = sanitize_input($whereClauses, false);
+          if (is_array($columns)) {
+          $columns = implode(',', $columns);
+          }
+          if (is_array($where)) {
+          $where = implode(',', $where);
+          }
+          if (is_array($values)) {
+          $values = implode('),(', $values);
+          }
+          if (!empty($where)) {
+          $where = " WHERE {$where}";
+          }
+          switch ($type) {
+          case 'select':
+          $query = "SELECT {$columns} FROM {$table}{$where}{$orderBy}{$offset}{$limit}";
+          break;
+          case 'insert':
+          $query = "INSERT INTO {$table}({$columns}) VALUES ({$values}){$where}";
+          break;
+          case 'update':
+          break;
+          case 'delete':
+          break;
+          default:
+          }
+          return $this->query; */
     }
 
-    private function consoleOut($output, $type = 'DB') {
-        if (is_array($output) || is_object($output)) {
-            echo("<script>console.log('{$type}: " . json_encode($output) . "');</script>");
-        } else {
-            echo("<script>console.log('{$type}: " . $output . "');</script>");
-        }
+    public function consoleOut($outputIn, $typeIn = 'DB') {
+        $output = is_array($outputIn) || is_object($outputIn) ? addslashes(json_encode($outputIn)) : addslashes($outputIn);
+        $type = addslashes($typeIn);
+        echo "<script>console.log(\"{$type}: {$output}\")</script>";
     }
 
-    private function sanitizeInput($input, $escape = true) {
+    public function sanitizeInput($input, $escape = true) {
         if (is_array($input)) {
             $new_input = array();
             foreach ($input as $key => $value) {
@@ -209,7 +210,7 @@ class DBConnect {
         return $escape ? addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($input), ENT_HTML5, 'UTF-8');
     }
 
-    private function sanitizeOutput($output) {
+    public function sanitizeOutput($output) {
         if (is_array($output)) {
             $new_output = array();
             foreach ($output as $key => $value) {
@@ -238,8 +239,10 @@ class UnitTest {
 
     private static $instance;
     private static $breakpoints;
-    private $origFile;
-    private $copyFile;
+    private static $origFiles;
+    private static $copyFiles;
+    private $filename;
+    private $db;
     private $currFunction;
     private $prevData;
     private $curreData;
@@ -247,17 +250,39 @@ class UnitTest {
     private $currLine;
     private $pause;
 
-    private function __construct() {
-        
+    private function __construct(&$db, $filename = __FILE__) {
+        $this->db = $db;
+        $this->filename = $filename;
+        if (!is_array($this->origFiles) || !is_array($this->copyFiles)) {
+            $this->origFiles = $this->copyFiles = array();
+        }
+        if (strpos($filename, 'utest') === false) {
+            $this->origFiles[$filename] = $filename;
+            $this->copyFiles[$filename] = preg_replace('/\\.[^.\\s]{3,4}$/', '.utest.php', $filename);
+            if (!copy($this->origFiles[$filename], $this->copyFiles[$filename])) {
+                $this->db->consoleOut("~!Failed to Copy File: [{$filename}]!~", 'PHP');
+            } else {
+                $this->db->consoleOut("Created File Copy: [{$filename}]", 'PHP');
+            }
+            header('Location: ' . basename($this->copyFiles[$filename]));
+            die();
+        }
     }
 
     private function __destruct() {
-        self::$instance = null;
+        if (strpos($this->filename, 'utest') === true) {
+            self::$instance = null;
+            foreach ($this->copyFiles as &$file) {
+                $this->db->consoleOut(unlink($file) ? "Removed File: [{$file}]" : "~!Failed to Remove File: [{$file}]!~", 'PHP');
+                unset($file);
+            }
+            $this->copyFile = null;
+        }
     }
 
-    public static function instantiateTest() {
+    public static function instantiateTest(&$db, $filename = __FILE__) {
         if (self::$instance == null) {
-            self::$instance = new self();
+            self::$instance = new self($db, $filename);
         }
         return self::$instance;
     }
@@ -295,6 +320,7 @@ class UnitTest {
     }
 
     public function traceProcesses() {
+
 
         echo '<br/>CLASS: ' . __CLASS__;
         echo '<br/>DIR: ' . __DIR__;

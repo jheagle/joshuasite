@@ -1,8 +1,15 @@
 <?php
 
+/*
+  require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
+  $db = DBConnect::instantiateDB('localhost','','root','', false);
+  $test = UnitTest::instantiateTest($db, __FILE__);
+  var_dump($test);
+ */
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/TrackingClass.php');
 
-$tracking = new tracking(isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
+$db = DBConnect::instantiateDB('', '', '', '', false);
+$tracking = new Tracking($db, isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
 
 class Contact {
 
@@ -25,11 +32,12 @@ class Contact {
         foreach (get_object_vars($this) as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif (!preg_match('/^(db|id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
             } elseif (!preg_match('/^(db|id)/', $prop)) {
                 $this->{$prop} = preg_match('/^(address|phone_number)/', $prop) ? array() : "";
             }
+            ++$i;
         }
     }
 
@@ -43,12 +51,18 @@ class Contact {
 
     public function set($property, $value) {
         if (is_array($value) && preg_match('/^(address|phone_number)/', $property)) {
+            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
             foreach ($value as $val) {
-                $this->add_{$property}($val);
+                if (is_array($val)) {
+                    $this->set($property, $val);
+                }
+                $this->add_contact_info($val);
             }
         } elseif (preg_match('/^(address|phone_number)/', $property)) {
+            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
             $this->add_contact_info($value);
         } elseif (property_exists($this, $property) && $property !== 'db') {
+            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -82,12 +96,14 @@ class Contact {
             if (!is_array($val)) {
                 $val->set('contact_id', $this->id);
                 $val->create_contact_{$type}();
+                $this->db->consoleOut("Created an Address", 'PHP');
                 continue;
             }
             foreach ($key as &$v) {
                 $v->set('contact_id', $this->id);
                 $v->set('phone_type', $key);
                 $v->create_contact_{$type}();
+                $this->db->consoleOut("Created a Phone Number", 'PHP');
             }
         }
         return $this->{$type};
@@ -143,12 +159,11 @@ class Contact {
 
     public function create_contact() {
         $columns = $values = array();
-        $required = array('first_name', 'address', 'phone_number');
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($prop !== 'id' && $prop !== 'db' && (!isset($val) || empty($val) || $val < 0) && in_array($prop, $required)) {
+            if ($prop !== 'id' && $prop !== 'db' && (!isset($val) || empty($val) || $val < 0) && preg_match('/^(first_name|address|phone_number)/', $prop)) {
                 return null;
-            } elseif ($prop !== 'id' && $prop !== 'db') {
+            } elseif (!preg_match('/^(db|id|address|phone_number)/', $prop)) {
                 $columns[] = "`{$prop}`";
                 $values[] = "'{$val}'";
             }
@@ -218,7 +233,7 @@ class Contact {
         foreach (get_object_vars($this) as $prop => $val) {
             if (!empty($name) && $prop === 'first_name') {
                 $have_value[] = "MATCH(`first_name`,`middle_name`,`last_name`) AGAINST('{$name}')";
-            } elseif ((!preg_match('/^(db|id|first_name|middle_name|last_name)/', $prop) || (empty($name) && preg_match('/^(first_name|middle_name|last_name)/', $prop))) && isset($val) && !empty($val)) {
+            } elseif ((!preg_match('/^(db|id|first_name|middle_name|last_name|address|phone_number)/', $prop) || (empty($name) && preg_match('/^(first_name|middle_name|last_name)/', $prop))) && isset($val) && !empty($val)) {
                 $have_value[] = "`{$prop}` LIKE '%{$val}%'";
             }
         }
@@ -388,13 +403,14 @@ class ContactAddress {
         $this->contact_id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($prop === 'db' && $args[$i] instanceof PDO) {
+            if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
             } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
                 $this->{$prop} = "";
             }
+            ++$i;
         }
     }
 
@@ -406,6 +422,7 @@ class ContactAddress {
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
+            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -614,13 +631,14 @@ class ContactPhoneNumber {
         $this->contact_id = -1;
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($prop === 'db' && $args[$i] instanceof PDO) {
+            if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
             } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
                 $this->{$prop} = "";
             }
+            ++$i;
         }
     }
 
@@ -632,6 +650,7 @@ class ContactPhoneNumber {
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
+            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }

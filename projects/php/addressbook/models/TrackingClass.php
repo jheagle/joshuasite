@@ -22,13 +22,14 @@ class Tracking {
         foreach (get_object_vars($this) as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id|date_time)/', $prop) && ++$i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif (!preg_match('/^(db|id|date_time)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
             } elseif (!preg_match('/^(db|id|date_time)/', $prop) && preg_match('/^(action|acting_class)/', $prop)) {
                 $this->{$prop} = $prop === 'action' ? "Changes occurred." : "tracking";
             } elseif (!preg_match('/^(db|id|date_time)/', $prop)) {
                 $this->{$prop} = $prop === 'class_id' ? -1 : "";
             }
+            ++$i;
         }
     }
 
@@ -40,7 +41,11 @@ class Tracking {
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
-            $this->{$property} = gettype($value) === 'object' ? $this->db->sanitizeInput(get_class($value)) : $this->db->sanitizeInput($value);
+            if (gettype($value) === 'object') {
+                $value = get_class($value);
+            }
+            $this->db->consoleOut("Setting {$property} to {$value}.", 'TRACKING');
+            $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
 
@@ -52,12 +57,18 @@ class Tracking {
     }
 
     public function add_event($action, $acting_class, $class_id) {
-        $this->set_action(isset($action) ? $action : $this->action);
-        $this->set_acting_class(isset($acting_class) ? $acting_class : $this->acting_class);
-        $this->set_class_id(isset($class_id) ? $class_id : $this->class_id);
+        $this->db->consoleOut(get_class($acting_class) . " has {$action} with id: {$class_id}.", 'TRACKING');
+        if (!empty($action)) {
+            $this->set('action', $action);
+        }
+        if (!empty($acting_class)) {
+            $this->set('acting_class', $acting_class);
+        }
+        if (!empty($class_id)) {
+            $this->set('class_id', $class_id);
+        }
         if (isset($this->app_user) && !empty($this->action) && !empty($this->acting_class) && isset($this->class_id) && $this->class_id > 0) {
-            $query = "INSERT INTO `tracking` (`date_time`,`app_user`,`action`,`acting_class`,`class_id`) VALUES (NOW(),'{$this->app_user}','{$this->action}','{$this->acting_class}',{$this->class_id})";
-            $this->db->insert($query);
+            $this->db->insert("INSERT INTO `tracking` (`date_time`,`app_user`,`action`,`acting_class`,`class_id`) VALUES (NOW(),'{$this->app_user}','{$this->action}','{$this->acting_class}',{$this->class_id})");
             return $this;
         }
     }
@@ -71,10 +82,10 @@ class Tracking {
 
         $limit = empty($limitTemp) ? '' : 'LIMIT ' . intval($limitTemp);
         $offset = empty($offsetTemp) ? '' : 'OFFSET ' . intval($offsetTemp);
-        $where = preg_match("/(`([a-z0-9])\w+`='?([a-z0-9])\w+'?,?)+/i", $whereTemp) ? 'WHERE ' . $whereTemp : "";
+        $where = preg_match("/(`([a-z0-9])\w+`='?([a-z0-9])\w+'?,?)+/i", $whereTemp) ? ' WHERE ' . $whereTemp : "";
         $orderBy = in_array($orderByTemp, $vars) ? $orderByTemp : "`date_time`";
         $direction = preg_match('/^(DESC|ASC)/i', $directionTemp) ? $directionTemp : 'DESC';
-        $query = "SELECT `date_time`, `action`, `class_id` FROM `tracking` {$where} ORDER BY {$orderBy} {$direction} {$limit} {$offset}";
+        $query = "SELECT `date_time`, `action`, `class_id` FROM `tracking`{$where} ORDER BY {$orderBy} {$direction} {$limit} {$offset}";
 
         while ($row = $this->db->select_assoc($query)) {
             $row['action'] = $this->db->sanitizeOutput($row['action']);

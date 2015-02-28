@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
-$db = DBConnect::instantiateDB('', '', '', '');
+$db = DBConnect::instantiateDB('', '', '', '', false);
 $contact = new Contact($db);
 $contacts = $contact->get_all_contacts();
 $contactList = "";

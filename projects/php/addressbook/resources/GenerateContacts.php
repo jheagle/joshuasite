@@ -2,25 +2,26 @@
 
 require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 
-generate_customers();
+generate_customers(1);
 
 function generate_customers($amount = 10) {
+    $db = DBConnect::instantiateDB('', '', '', '', true);
     for ($i = 0; $i < $amount; ++$i) {
         $address = array();
-        $address[] = new ContactAddress(-1, -1, generate_street($i), generate_city(), generate_province($i), generate_country($i), generate_postal($i));
+        $address[] = new ContactAddress($db, -1, -1, generate_street($i), generate_city(), generate_province($i), generate_country($i), generate_postal($i));
         $phones = array();
         if ($i % 3 === 0) {
-            $phones[] = new ContactPhoneNumber(-1, -1, 'home', generate_phone());
+            $phones[] = new ContactPhoneNumber($db, -1, -1, 'home', generate_phone());
         }
-        $phones[] = new ContactPhoneNumber(-1, -1, 'work', generate_phone());
+        $phones[] = new ContactPhoneNumber($db, -1, -1, 'work', generate_phone());
         if ($i % 2 === 0) {
-            $phones[] = new ContactPhoneNumber(-1, -1, 'cell', generate_phone());
+            $phones[] = new ContactPhoneNumber($db, -1, -1, 'cell', generate_phone());
         }
         $first_name = generate_name();
         $middle_name = $i % 2 === 0 ? generate_name() : "";
         $last_name = generate_name();
-        $customer = new Contact(-1, $first_name, $middle_name, $last_name, $address, $phones, generate_email($first_name, $last_name), "");
-        $customer->create_customer();
+        $customer = new Contact($db, -1, $first_name, $middle_name, $last_name, $address, $phones, generate_email($first_name, $last_name), "");
+        $customer->create_contact();
     }
 }
 
