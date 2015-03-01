@@ -14,17 +14,18 @@ class DBConnect {
 
     protected function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
-            include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
+            //include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
+            include_once('../resources/dbInfo.php');
         }
         $this->database = $database;
         $this->testing = $testing;
         $this->production = $production;
         $this->queries = 0;
-        if (!is_array($this->pdoInstance)) {
+        if (empty($this->pdoInstance) || !is_array($this->pdoInstance)) {
             $this->pdoInstance = array();
         }
         try {
-            if (!$this->pdoInstance[$database]) {
+            if (empty($this->pdoInstance[$database])) {
                 $this->pdoInstance[$database] = new PDO("mysql:host={$hostname};dbname={$database}", $username, $password);
             }
             if ($testing && !$production) {
@@ -39,7 +40,7 @@ class DBConnect {
         }
     }
 
-    final private function __destruct() {
+    public function __destruct() {
         
     }
 
@@ -47,10 +48,7 @@ class DBConnect {
         if (!is_array(self::$instance)) {
             self::$instance = array();
         }
-        if (self::$instance[$database] == null) {
-            /* $class = get_called_class();
-              $reflect = new ReflectionClass($class);
-              self::$instance[$database] = $reflect->newInstance(func_get_args()); */
+        if (empty(self::$instance[$database])) {
             self::$instance[$database] = new self($hostname, $database, $username, $password, $testing, $production);
         }
         return self::$instance[$database];
@@ -61,6 +59,7 @@ class DBConnect {
     }
 
     private function exec($queryRaw = '', $type = 'insert') {
+        $count = 0;
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
         if (empty($query)) {
             return;
@@ -124,23 +123,28 @@ class DBConnect {
     }
 
     public function select_assoc($queryRaw = '') {
-        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_ASSOC) : $this->query($queryRaw, 'select');
+        $result = $this->query($queryRaw, 'select');
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_ASSOC) : $result;
     }
 
     public function select_num($queryRaw = '') {
-        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_NUM) : $this->query($queryRaw, 'select');
+        $result = $this->query($queryRaw, 'select');
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_NUM) : $result;
     }
 
     public function select_both($queryRaw = '') {
-        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_BOTH) : $this->query($queryRaw, 'select');
+        $result = $this->query($queryRaw, 'select');
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_BOTH) : $result;
     }
 
     public function select_object($queryRaw = '') {
-        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_OBJECT) : $this->query($queryRaw, 'select');
+        $result = $this->query($queryRaw, 'select');
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_OBJECT) : $result;
     }
 
     public function select_lazy($queryRaw = '') {
-        return $this->pdoInstance[$this->database] ? $this->query($queryRaw, 'select')->fetch($this->pdoInstance->FETCH_LAZY) : $this->query($queryRaw, 'select');
+        $result = $this->query($queryRaw, 'select');
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_LAZY) : $result;
     }
 
     private function queryValidation($queryRaw, $type) {

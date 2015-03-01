@@ -6,7 +6,8 @@
   $test = UnitTest::instantiateTest($db, __FILE__);
   var_dump($test);
  */
-require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/TrackingClass.php');
+require_once('dbConnectClass.php');
+require_once('TrackingClass.php');
 
 $db = DBConnect::instantiateDB('', '', '', '', false);
 $tracking = new Tracking($db, isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
@@ -51,7 +52,7 @@ class Contact {
 
     public function set($property, $value) {
         if (is_array($value) && preg_match('/^(address|phone_number)/', $property)) {
-            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
+            $this->db->consoleOut("Setting {$property} to " . json_encode($value), 'PHP');
             foreach ($value as $val) {
                 if (is_array($val)) {
                     $this->set($property, $val);
@@ -71,7 +72,7 @@ class Contact {
         if ($contact_id < 1) {
             $contact_id = $this->id;
         }
-        $info = $type === 'address' ? new ContactAddress(-1, $contact_id) : new ContactPhoneNumber(-1, $contact_id);
+        $info = $type === 'address' ? new ContactAddress($this->db, -1, $contact_id) : new ContactPhoneNumber($this->db, -1, $contact_id);
         $this->set($type, $info->get_all_{$type}());
         return $this->{$type};
     }
@@ -81,6 +82,9 @@ class Contact {
             $this->address[] = $contact_info;
         } elseif (get_class($contact_info) == "ContactPhoneNumber") {
             $phone_type = $contact_info->phone_type;
+            if (empty($this->phone_number)) {
+                $this->phone_number = array();
+            }
             if (!in_array($phone_type, $this->phone_number)) {
                 $this->phone_number[$phone_type] = array();
             }
@@ -241,7 +245,7 @@ class Contact {
         if (!empty($have_value)) {
             $table = $this->db->camelToUnderscore(get_class($this));
             $have = implode(" AND ", $have_value);
-            $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
+            echo $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
 
             while ($row = $this->db->select_assoc($query)) {
                 $contact_ids[] = $row['id'];
