@@ -1,6 +1,6 @@
 <?php
 
-//require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
 
 class Tracking {
 
@@ -44,7 +44,9 @@ class Tracking {
             if (gettype($value) === 'object') {
                 $value = get_class($value);
             }
-            $this->db->consoleOut("Setting {$property} to {$value}.", 'TRACKING');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to {$value}.", 'TRACKING');
+            }
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -57,7 +59,9 @@ class Tracking {
     }
 
     public function add_event($action, $acting_class, $class_id) {
-        $this->db->consoleOut(get_class($acting_class) . " has {$action} with id: {$class_id}.", 'TRACKING');
+        if ($this->db->testing || !$this->db->production) {
+            $this->db->consoleOut(get_class($acting_class) . " has {$action} with id: {$class_id}.", 'TRACKING');
+        }
         if (!empty($action)) {
             $this->set('action', $action);
         }
@@ -88,7 +92,9 @@ class Tracking {
         $query = "SELECT `date_time`, `action`, `class_id` FROM `tracking`{$where} ORDER BY {$orderBy} {$direction} {$limit} {$offset}";
 
         while ($row = $this->db->select_assoc($query)) {
-            $row['action'] = $this->db->sanitizeOutput($row['action']);
+            if (!empty($row['action'])) {
+                $row['action'] = $this->db->sanitizeOutput($row['action']);
+            }
             $logs[] = $row;
         }
 
@@ -110,8 +116,7 @@ class Tracking {
         if (!empty($have_value)) {
             $have = implode(" AND ", $have_value);
             $need = empty($need_value) ? "" : ", " . implode(", ", $need_value);
-            $query = "SELECT {$need} FROM `tracking` WHERE {$have}";
-            while ($row = $this->db->select_assoc($query)) {
+            while ($row = $this->db->select_assoc("SELECT {$need} FROM `tracking` WHERE {$have}")) {
                 $row['action'] = $this->db->sanitizeOutput($row['action']);
                 $logs[] = $row;
             }

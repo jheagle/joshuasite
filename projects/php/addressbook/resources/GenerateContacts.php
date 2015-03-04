@@ -1,11 +1,13 @@
 <?php
 
-require_once('../models/ContactClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
+$db = DBConnect::instantiateDB('', '', '', '', false);
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
 
 generate_customers(1);
 
 function generate_customers($amount = 10) {
-    $db = DBConnect::instantiateDB('', '', '', '', false);
+    global $db;
     for ($i = 0; $i < $amount; ++$i) {
         $address = array();
         $address[] = new ContactAddress($db, -1, -1, generate_street($i), generate_city(), generate_province($i), generate_country($i), generate_postal($i));

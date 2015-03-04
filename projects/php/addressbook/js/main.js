@@ -53,12 +53,12 @@ $(document).ready(function ()
             if (data.length < 1) {
                 $('#contact-list').html("<option value='-1'>Create New Contact</option>");
             }
-            if (data.length === 1 && data[0].seq === -1) {
+            if (data.length === 1 && data[0].id === -1) {
                 contacts.push(data[0]);
                 $('#contact-list').html("<option value='-1'>Create Contact: " + data[0].first_name + " " + data[0].middle_name + " " + data[0].last_name + "</option>");
             } else {
                 $.each(data, function (j, contact) {
-                    $('#contact-list').append("<option value='" + contact.seq + "'>" + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + "</option>");
+                    $('#contact-list').append("<option value='" + contact.id + "'>" + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + "</option>");
                 });
             }
             if (!searchElements.attr('disabled'))
@@ -101,14 +101,14 @@ $(document).ready(function ()
      */
     $('#contact-list').on('click, change', function () {
         if ($('#contact-list option:selected').length) {
-            contactSeq = $('#contact-list option:selected').val(); // Retrieve sequence of selected contact
+            contactSeq = $('#contact-list option:selected').val(); // Retrieve iduence of selected contact
             var hasContact = false;
             offset = 0;
             $('.left-pager').fadeOut();
             // check if contact is in local list
             $.each(contacts, function (j, contact)
             {
-                if (contact.seq === contactSeq)
+                if (contact.id === contactSeq)
                 {
                     hasContact = true;
                     setContact(contact);
@@ -117,7 +117,7 @@ $(document).ready(function ()
             });
             // search for contact if not stored locally 
             if (!hasContact) {
-                $.post('controllers/AddressbookController.php', {contact_seq: contactSeq}, function (contact) {
+                $.post('controllers/AddressbookController.php', {contact_id: contactSeq}, function (contact) {
                     contacts.push(contact);
                     setContact(contact);
                     return;
@@ -199,9 +199,9 @@ $(document).ready(function ()
         document.getElementById('contact-list').selectedIndex = -1;
         contactSeq = -1;
         $('.edit-form').trigger('reset');
-        $('.contact-seq').remove();
-        $('.address-seq').remove();
-        $('.phone-seq').remove();
+        $('.contact-id').remove();
+        $('.address-id').remove();
+        $('.phone-id').remove();
         $('.success-status').removeClass('success-status');
         $('.error-status').removeClass('error-status');
         $('.error-msg').remove();
@@ -278,7 +278,7 @@ $(document).ready(function ()
     $('.add-address').on('click', function () {
         $('.address').last().after($('.address').first().clone());
         $('.address:last .address-name').html('Address ' + $('.address').length);
-        $('.address:last .address-seq').remove();
+        $('.address:last .address-id').remove();
 
         // Add remove this address listener
         $('.remove-address').on('click', function () {
@@ -356,7 +356,7 @@ $(document).ready(function ()
      */
     $('.add-phone').on('click', function () {
         $('.phone-number').last().after($('.phone-number').first().clone());
-        $('.phone-number:last .phone-seq').remove();
+        $('.phone-number:last .phone-id').remove();
 
         $('.remove-phone').on('click', function () {
             if ($('.phone-number').length > 1) {
@@ -391,7 +391,7 @@ $(document).ready(function ()
                     $('#contact-list').html("<option>No Contacts Found</option>");
                 }
                 $.each(data, function (j, contact) {
-                    $('#contact-list').append('<option value="' + contact.seq + '">' + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + '</option>');
+                    $('#contact-list').append('<option value="' + contact.id + '">' + contact.last_name + ", " + contact.first_name + " " + contact.middle_name + '</option>');
                 });
                 contacts = $();
                 spinner.stop();
@@ -448,7 +448,7 @@ $(document).ready(function ()
                 $('.logs tbody').html("<tr><td colspan='3'>No Events Found</td></tr>");
             }
             $.each(data, function (j, event) {
-                $('.logs tbody').append('<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_seq + '</tr>');
+                $('.logs tbody').append('<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_id + '</tr>');
             });
             spinner.stop();
         }, 'json');
@@ -471,7 +471,7 @@ $(document).ready(function ()
             {
                 var rows = "";
                 $.each(data, function (j, event) {
-                    rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_seq + '</tr>';
+                    rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_id + '</tr>';
                 });
                 if (data.length < 1) {
                     rows = "<tr><td colspan='3'>No Events Found</td></tr>";
@@ -503,7 +503,7 @@ $(document).ready(function ()
             {
                 var rows = "";
                 $.each(data, function (j, event) {
-                    rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_seq + '</tr>';
+                    rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_id + '</tr>';
                 });
                 if (data.length < 1) {
                     rows = "<tr><td colspan='3'>No Events Found</td></tr>";
@@ -536,15 +536,15 @@ function setContact(contact)
     var isUpdate = true;
     $('.display-create').trigger('click');
     $('.create-contact h2').html('Edit ' + contact.first_name);
-    if ($('.name-group .contact-seq').length)
+    if ($('.name-group .contact-id').length)
     {
-        $('.name-group .contact-seq').val(contact.seq);
+        $('.name-group .contact-id').val(contact.id);
     }
     else
     {
-        $('.name-group').append("<input class='contact-seq' type='hidden' name='contact_seq' value='" + contact.seq + "'>");
+        $('.name-group').append("<input class='contact-id' type='hidden' name='contact_id' value='" + contact.id + "'>");
     }
-    if (contact.seq > 0) {
+    if (contact.id > 0) {
         $('.submit-create').val('Update');
         $('.create-contact').removeClass('create');
         $('.create-contact').addClass('update');
@@ -555,9 +555,9 @@ function setContact(contact)
         $('.create-contact').removeClass('update');
         $('.create-contact').addClass('create');
         $('.submit-delete').fadeOut();
-        $('.contact-seq').remove();
-        $('.address-seq').remove();
-        $('.phone-seq').remove();
+        $('.contact-id').remove();
+        $('.address-id').remove();
+        $('.phone-id').remove();
     }
     $('.success-status').removeClass('success-status');
     $('.error-status').removeClass('error-status');
@@ -571,13 +571,13 @@ function setContact(contact)
             $('.add-address').trigger('click');
         }
         if (isUpdate) {
-            if ($('.address:eq(' + j + ') .address-seq').length)
+            if ($('.address:eq(' + j + ') .address-id').length)
             {
-                $('.address:eq(' + j + ') .address-seq').val(address.seq);
+                $('.address:eq(' + j + ') .address-id').val(address.id);
             }
             else
             {
-                $('.address:eq(' + j + ')').append("<input class='address-seq' type='hidden' name='address[seq][]' value='" + address.seq + "'>");
+                $('.address:eq(' + j + ')').append("<input class='address-id' type='hidden' name='address[id][]' value='" + address.id + "'>");
             }
         }
         var streetSplit = address.street.split("-");
@@ -610,13 +610,13 @@ function setContact(contact)
                 $('.add-phone').trigger('click');
             }
             if (isUpdate) {
-                if ($('.phone-number:eq(' + cnt + ') .phone-seq').length)
+                if ($('.phone-number:eq(' + cnt + ') .phone-id').length)
                 {
-                    $('.phone-number:eq(' + cnt + ') .phone-seq').val(number.seq);
+                    $('.phone-number:eq(' + cnt + ') .phone-id').val(number.id);
                 }
                 else
                 {
-                    $('.phone-number:eq(' + cnt + ')').append("<input class='phone-seq' type='hidden' name='phone[seq][]' value='" + number.seq + "'>");
+                    $('.phone-number:eq(' + cnt + ')').append("<input class='phone-id' type='hidden' name='phone[id][]' value='" + number.id + "'>");
                 }
             }
             $('.phone-number:eq(' + cnt + ') .phone-type').val(number.phone_type);
@@ -627,7 +627,7 @@ function setContact(contact)
     $('.create-contact .email').val(contact.email);
     $('.create-contact .notes').val(contact.notes);
 
-    $.post('controllers/LogsController.php', {count: contact.seq}, function (data) {
+    $.post('controllers/LogsController.php', {count: contact.id}, function (data) {
         limit = data;
         if (limit > 10) {
             $('.right-pager').fadeIn();
@@ -636,10 +636,10 @@ function setContact(contact)
         }
     });
 
-    $.post('controllers/LogsController.php', {contact: contact.seq}, function (data) {
+    $.post('controllers/LogsController.php', {contact: contact.id}, function (data) {
         var rows = "";
         $.each(data, function (j, event) {
-            rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_seq + '</tr>';
+            rows += '<tr><td>' + event.date_time + "</td><td>" + event.action + '</td><td>' + event.class_id + '</tr>';
         });
         if (data.length < 1) {
             rows = "<tr><td colspan='3'>No Events Found</td></tr>";
@@ -740,7 +740,7 @@ function removePhoneFormat(number) {
 function verifyCreate() {
     $('.sumbit-type').remove();
     $('.submit-type').val('Create');
-    if ($('.contact-seq').length) {
+    if ($('.contact-id').length) {
         $('.submit-type').val('Update');
         return confirm("Are you sure you want to modify this contact?");
     }

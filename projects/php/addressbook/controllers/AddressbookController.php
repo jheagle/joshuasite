@@ -1,21 +1,22 @@
 <?php
 
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
+$db = DBConnect::instantiateDB('', '', '', '', false, true);
 require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 
-if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST['address']) &&
-        !empty($_POST['phone'])) {
-    $customer_id = isset($_POST['customer_id']) ? $_POST['customer_id'] : -1;
+if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST['address']) && !empty($_POST['phone'])) {
+    global $db;
+    $contact_id = isset($_POST['contact_id']) ? $_POST['contact_id'] : -1;
     $addresses = array();
     $num_addresses = count($_POST['address']['postal']);
     foreach ($_POST['address'] as $key => $value) {
-        if ((empty($value) && $key != "apartment") || count($value) != $num_addresses &&
-                $key != "id") {
-            header('Location: ../index.php');
+        if ((empty($value) && $key != "apartment") || count($value) != $num_addresses && $key != "id") {
+            header('Location: ' . $_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/');
             return;
         }
         foreach ($value as $val) {
             if (empty($val) && $key != "apartment") {
-                header('Location: ../index.php');
+                header('Location: ' . $_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/');
                 return;
             }
         }
@@ -24,7 +25,7 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
         $apartment = empty($_POST['address']['apartment'][$i]) ? "" : $_POST['address']['apartment'][$i] . "-";
         $street = $apartment . $_POST['address']['number'][$i] . " " . $_POST['address']['street'][$i];
         $address_id = isset($_POST['address']['id'][$i]) ? $_POST['address']['id'][$i] : -1;
-        $addresses[] = new ContactAddress($address_id, $customer_id, $street, $_POST['address']['city'][$i], $_POST['address']['province'][$i], $_POST['address']['country'][$i], $_POST['address']['postal'][$i]);
+        $addresses[] = new ContactAddress($db, $address_id, $contact_id, $street, $_POST['address']['city'][$i], $_POST['address']['province'][$i], $_POST['address']['country'][$i], $_POST['address']['postal'][$i]);
     }
     $phones = array();
     $has_work_phone = FALSE;
@@ -35,40 +36,42 @@ if (!empty($_POST['first_name']) && !empty($_POST['last_name']) && !empty($_POST
         }
     }
     if (!$has_work_phone || count($_POST['phone']['type']) != count($_POST['phone']['number'])) {
-        header('Location: ../index.php');
+        header('Location: ' . $_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/');
         return;
     }
     for ($i = 0; $i < count($_POST['phone']['number']); ++$i) {
         $phone_id = isset($_POST['phone']['id'][$i]) ? $_POST['phone']['id'][$i] : -1;
-        $phones[] = new ContactPhoneNumber($phone_id, $customer_id, $_POST['phone']['type'][$i], $_POST['phone']['number'][$i]);
+        $phones[] = new ContactPhoneNumber($db, $phone_id, $contact_id, $_POST['phone']['type'][$i], $_POST['phone']['number'][$i]);
     }
-    $customer = new Contact($customer_id, $_POST['first_name'], $_POST['middle_name'], $_POST['last_name'], $addresses, $phones, $_POST['email'], $_POST['notes']);
+    $contact = new Contact($db, $contact_id, $_POST['first_name'], $_POST['middle_name'], $_POST['last_name'], $addresses, $phones, $_POST['email'], $_POST['notes']);
 
-    if (isset($_POST['customer_id']) && isset($_POST['address']['id']) && isset($_POST['phone']['id'])) {
+    if (isset($_POST['contact_id']) && isset($_POST['address']['id']) && isset($_POST['phone']['id'])) {
         if (isset($_POST['submit']) && $_POST['submit'] === 'Update') {
-            $customer->update_customer();
+            $contact->update_contact();
         } elseif (isset($_POST['submit']) && $_POST['submit'] === 'Delete') {
-            $customer->delete_customer();
+            $contact->delete_contact();
         }
     } elseif (isset($_POST['submit']) && $_POST['submit'] === 'Create') {
-        $customer->create_customer();
+        $contact->create_contact();
     }
 
-    $customers_json = array();
-    $customer = new Contact();
-    $customers = $customer->get_all_customers();
-    foreach ($customers as $cust) {
-        $customers_json[] = $cust->get_as_json();
+    $contacts_json = array();
+    $contact = new Contact($db);
+    $contacts = array();
+    $contacts = $contact->get_all_contacts();
+    foreach ($contacts as $cust) {
+        $contacts_json[] = $cust->get_as_json();
     }
     header('Content-Type: application/json');
-    echo json_encode($customers_json);
+    echo json_encode($contacts_json);
     return;
 }
 
-if (isset($_POST['customer_id'])) {
-    $customer = new Contact($_POST['customer_id']);
-    $customer = $customer->get_customer();
+if (isset($_POST['contact_id'])) {
+    global $db;
+    $contact = new Contact($db, $_POST['contact_id']);
+    $contact = $contact->get_contact();
     header('Content-Type: application/json');
-    echo json_encode($customer->get_as_json());
+    echo json_encode($contact->get_as_json());
     return;
 }

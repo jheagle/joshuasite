@@ -1,6 +1,8 @@
 <?php
 
 if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
+    require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
+    $db = DBConnect::instantiateDB('', '', '', '', false, true);
     require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
     $files = $_FILES['csv-file'];
     $allowedExts = array('csv');
@@ -56,13 +58,13 @@ if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
                         $notesDex = array_search("notes", $row);
                         $cnt ++;
                     } else {
-                        $address = array(new customer_address(-1, -1, $row[$streetDex], $row[$cityDex], $row[$provinceDex], $row[$countryDex], $row[$postalDex]));
+                        $address = array(new ContactAddress($db, -1, -1, $row[$streetDex], $row[$cityDex], $row[$provinceDex], $row[$countryDex], $row[$postalDex]));
                         $phones = array();
-                        $phones[] = new customer_phone_number(-1, -1, 'home', $row[$homePhDex]);
-                        $phones[] = new customer_phone_number(-1, -1, 'work', $row[$workPhDex]);
-                        $phones[] = new customer_phone_number(-1, -1, 'cell', $row[$cellPhDex]);
-                        $customer = new customer(-1, $row[$fnameDex], $row[$mnameDex], $row[$lnameDex], $address, $phones, $row[$emailDex], $row[$notesDex]);
-                        $customer->create_customer();
+                        $phones[] = new ContactPhoneNumber($db, -1, -1, 'home', $row[$homePhDex]);
+                        $phones[] = new ContactPhoneNumber($db, -1, -1, 'work', $row[$workPhDex]);
+                        $phones[] = new ContactPhoneNumber($db, -1, -1, 'cell', $row[$cellPhDex]);
+                        $contact = new Contact($db, -1, $row[$fnameDex], $row[$mnameDex], $row[$lnameDex], $address, $phones, $row[$emailDex], $row[$notesDex]);
+                        $contact->create_contact();
                     }
                 }
                 fclose($file);
@@ -78,7 +80,7 @@ if (isset($_FILES['csv-file']['name']) && $_FILES['csv-file']['name'] != '') {
 require_once($_SERVER["DOCUMENT_ROOT"] . '/projects/php/addressbook/models/ContactClass.php');
 header('Content-Type: application/json');
 
-$customers_json = array();
+$contacts_json = array();
 $is_empty = true;
 
 if (is_array($_POST) && !empty($_POST)) {
@@ -109,12 +111,14 @@ if (is_array($_POST) && !empty($_POST)) {
 }
 
 if ($is_empty) {
-    $customer = new customer();
-    $customers = $customer->get_all_customers();
-    foreach ($customers as $cust) {
-        $customers_json[] = $cust->get_as_json();
+    $db = DBConnect::instantiateDB('', '', '', '', false, true);
+    $contact = new Contact($db);
+    $contacts = $contact->get_all_contacts();
+    foreach ($contacts as $cust) {
+        $contacts_json[] = $cust->get_as_json();
     }
 } else {
+    $db = DBConnect::instantiateDB('', '', '', '', false, true);
     $address = array();
     $phone = array();
 
@@ -124,12 +128,12 @@ if ($is_empty) {
     $country = isset($_POST['address']['country']) ? trim($_POST['address']['country']) : "";
     $postal = isset($_POST['address']['postal']) ? trim($_POST['address']['postal']) : "";
 
-    $address[] = new customer_address(-1, -1, $street, $city, $province, $country, $postal);
+    $address[] = new ContactAddress($db, -1, -1, $street, $city, $province, $country, $postal);
 
     $type = isset($_POST['phone']['type']) ? trim($_POST['phone']['type']) : "";
     $number = isset($_POST['phone']['number']) ? trim($_POST['phone']['number']) : "";
 
-    $phone[] = new customer_phone_number(-1, -1, $type, $number);
+    $phone[] = new ContactPhoneNumber($db, -1, -1, $type, $number);
 
 
 
@@ -139,12 +143,12 @@ if ($is_empty) {
     $email = isset($_POST['email']) ? trim($_POST['email']) : "";
     $notes = isset($_POST['notes']) ? trim($_POST['notes']) : "";
 
-    $customer = new customer(-1, $first_name, $middle_name, $last_name, $address, $phone, $email, $notes);
+    $contact = new Contact($db, -1, $first_name, $middle_name, $last_name, $address, $phone, $email, $notes);
     $name = trim($_POST['name']);
-    $customers = $customer->search_customer($name);
-    if (is_array($customers) && count($customers) > 0) {
-        foreach ($customers as $cust) {
-            $customers_json[] = $cust->get_as_json();
+    $contacts = $contact->search_contact($name);
+    if (is_array($contacts) && count($contacts) > 0) {
+        foreach ($contacts as $cust) {
+            $contacts_json[] = $cust->get_as_json();
         }
     } else {
         $names = explode(" ", $name);
@@ -153,30 +157,30 @@ if ($is_empty) {
             case 0:
                 break;
             case 1:
-                $customer->set_first_name($names[0]);
+                $contact->set('first_name', $names[0]);
                 break;
             case 2:
-                $customer->set_first_name($names[0]);
-                $customer->set_last_name($names[1]);
+                $contact->set('first_name', $names[0]);
+                $contact->set('last_name', $names[1]);
                 break;
             case 3:
-                $customer->set_first_name($names[0]);
-                $customer->set_middle_name($names[1]);
-                $customer->set_last_name($names[2]);
+                $contact->set('first_name', $names[0]);
+                $contact->set('middle_name', $names[1]);
+                $contact->set('last_name', $names[2]);
                 break;
             default:
-                $customer->set_first_name($names[0]);
+                $contact->set('first_name', $names[0]);
                 $mid_names = "";
                 for ($i = 1; $i < $cnt - 1; ++$i) {
                     $mid_names .= $names[$i];
                 }
-                $customer->set_middle_name($mid_names);
-                $customer->set_last_name($names[$cnt - 1]);
+                $contact->set('middle_name', $mid_names);
+                $contact->set('last_name', $names[$cnt - 1]);
         }
-        $customers_json[] = $customer->get_as_json();
+        $contacts_json[] = $contact->get_as_json();
     }
 }
-echo json_encode($customers_json);
+echo json_encode($contacts_json);
 return;
 
 

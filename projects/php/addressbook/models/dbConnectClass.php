@@ -5,8 +5,8 @@ class DBConnect {
     protected static $instance;
     private static $pdoInstance;
     private $database;
-    private $production; // environment
-    private $testing; // mode (truly run a query or not)
+    public $production; // environment
+    public $testing; // mode (truly run a query or not)
     private $queries;
     private $result;
     private $queryRaw;
@@ -14,8 +14,7 @@ class DBConnect {
 
     protected function __construct($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
-            //include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
-            include_once('../resources/dbInfo.php');
+            include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
         }
         $this->database = $database;
         $this->testing = $testing;
@@ -28,12 +27,12 @@ class DBConnect {
             if (empty($this->pdoInstance[$database])) {
                 $this->pdoInstance[$database] = new PDO("mysql:host={$hostname};dbname={$database}", $username, $password);
             }
-            if ($testing && !$production) {
+            if ($testing || !$production) {
                 $this->consoleOut("Connected to database ({$database})");
             }
             //TODO: ADD LOG
         } catch (PDOException $e) {
-            if ($testing && !$production) {
+            if ($testing || !$production) {
                 $this->consoleOut($e->getMessage());
             }
             //TODO: ADD LOG
@@ -123,23 +122,25 @@ class DBConnect {
     }
 
     public function select_assoc($queryRaw = '') {
-        $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_ASSOC) : $result;
+        if (empty($this->result) || $queryRaw !== $this->queryRaw) {
+            $this->query($queryRaw, 'select');
+        }
+        return $this->pdoInstance[$this->database] ? $this->result->fetch(PDO::FETCH_ASSOC) : $this->result;
     }
 
     public function select_num($queryRaw = '') {
         $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_NUM) : $result;
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_NUM) : $result;
     }
 
     public function select_both($queryRaw = '') {
         $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_BOTH) : $result;
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_BOTH) : $result;
     }
 
     public function select_object($queryRaw = '') {
         $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_OBJECT) : $result;
+        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_OBJECT) : $result;
     }
 
     public function select_lazy($queryRaw = '') {

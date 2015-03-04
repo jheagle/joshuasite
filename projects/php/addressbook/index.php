@@ -1,19 +1,27 @@
 <?php
 session_start();
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
-$db = DBConnect::instantiateDB('', '', '', '', false);
+$db = DBConnect::instantiateDB('', '', '', '', false, true);
 $contact = new Contact($db);
 $contacts = $contact->get_all_contacts();
 $contactList = "";
-foreach ($contacts as $cust) {
-    $contactList .= "<option value='{$cust->id}'>{$cust->last_name}, {$cust->first_name} {$cust->middle_name}</option>";
+if (is_array($contacts)) {
+    foreach ($contacts as $cont) {
+        if ($cont instanceof Contact) {
+            $contactList .= "<option value='{$cont->id}'>{$cont->last_name}, {$cont->first_name} {$cont->middle_name}</option>";
+        }
+    }
 }
 
 $tracking = new Tracking($db, isset($_SESSION['abUser']) ? $_SESSION['abUser'] : "");
 $events = $tracking->get_all_events(10, 0);
 $trackingList = "";
-foreach ($events as $event) {
-    $trackingList .= "<tr><td>{$event['datetime']}</td><td>{$event['action']}</td><td>{$event['class_index']}</td></tr>";
+if (is_array($events)) {
+    foreach ($events as $event) {
+        if (is_array($event) && isset($event['date_time']) && isset($event['action']) && isset($event['class_id'])) {
+            $trackingList .= "<tr><td>{$event['date_time']}</td><td>{$event['action']}</td><td>{$event['class_id']}</td></tr>";
+        }
+    }
 }
 ?>
 <!DOCTYPE html> 

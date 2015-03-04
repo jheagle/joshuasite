@@ -1,15 +1,7 @@
 <?php
 
-/*
-  require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
-  $db = DBConnect::instantiateDB('localhost','','root','', false);
-  $test = UnitTest::instantiateTest($db, __FILE__);
-  var_dump($test);
- */
-require_once('dbConnectClass.php');
-require_once('TrackingClass.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/TrackingClass.php');
 
-$db = DBConnect::instantiateDB('', '', '', '', false);
 $tracking = new Tracking($db, isset($_SESSION['ab_user']) ? $_SESSION['ab_user'] : "");
 
 class Contact {
@@ -33,9 +25,9 @@ class Contact {
         foreach (get_object_vars($this) as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif ($prop !== 'db' && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
-            } elseif (!preg_match('/^(db|id)/', $prop)) {
+            } elseif ($prop !== 'db') {
                 $this->{$prop} = preg_match('/^(address|phone_number)/', $prop) ? array() : "";
             }
             ++$i;
@@ -52,18 +44,25 @@ class Contact {
 
     public function set($property, $value) {
         if (is_array($value) && preg_match('/^(address|phone_number)/', $property)) {
-            $this->db->consoleOut("Setting {$property} to " . json_encode($value), 'PHP');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to " . json_encode($value), 'CONTACT');
+            }
             foreach ($value as $val) {
                 if (is_array($val)) {
                     $this->set($property, $val);
+                    continue;
                 }
                 $this->add_contact_info($val);
             }
         } elseif (preg_match('/^(address|phone_number)/', $property)) {
-            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to " . json_encode($value), 'CONTACT');
+            }
             $this->add_contact_info($value);
         } elseif (property_exists($this, $property) && $property !== 'db') {
-            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to {$value}", 'CONTACT');
+            }
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -85,7 +84,7 @@ class Contact {
             if (empty($this->phone_number)) {
                 $this->phone_number = array();
             }
-            if (!in_array($phone_type, $this->phone_number)) {
+            if (!isset($this->phone_number[$phone_type])) {
                 $this->phone_number[$phone_type] = array();
             }
             $this->phone_number[$phone_type][] = $contact_info;
@@ -99,51 +98,61 @@ class Contact {
         foreach ($this->{$type} as $key => &$val) {
             if (!is_array($val)) {
                 $val->set('contact_id', $this->id);
-                $val->create_contact_{$type}();
-                $this->db->consoleOut("Created an Address", 'PHP');
+                $val->{"create_contact_{$type}"}();
+                if ($this->db->testing || !$this->db->production) {
+                    $this->db->consoleOut("Created an Address", 'CONTACT');
+                }
                 continue;
             }
-            foreach ($key as &$v) {
+            foreach ($val as &$v) {
                 $v->set('contact_id', $this->id);
                 $v->set('phone_type', $key);
-                $v->create_contact_{$type}();
-                $this->db->consoleOut("Created a Phone Number", 'PHP');
+                $v->{"create_contact_{$type}"}();
+                if ($this->db->testing || !$this->db->production) {
+                    $this->db->consoleOut("Created a Phone Number", 'CONTACT');
+                }
             }
         }
         return $this->{$type};
     }
 
-    private function update_contact_info($type, $contact_infoIn = null, $idArrayIn = null, $strIndex = null) {
+    private function update_contact_info($type, $newInfoIn = null, $oldInfoIn = null) {
         if (empty($this->id) || $this->id < 1 || !preg_match('/^(address|phone_number)/', $type)) {
             return null;
         }
 
-        $contact_info_ids = array();
+        $contact_info_ids = $tempArray = array();
 
-        $idArray = is_array($idArrayIn) ? $idArrayIn : $this->{$type};
-        $cnt = count($idArray);
+        $newInfo = empty($newInfoIn) ? $this->{$type} : $newInfoIn;
 
-        $temp_info = $type === 'address' ? new ContactAddress(-1, $this->id) : new ContactPhoneNumber(-1, $this->id);
-        $newContact = empty($strIndex) ? $temp_info->get_all_contact_{$type}() : $temp_info->get_all_contact_{$type}()[$strIndex];
-        $origContact = empty($strIndex) ? $contact_infoIn : $contact_infoIn[$strIndex];
-        $contact_infoArray = is_array($contact_infoIn) ? $origContact : $newContact;
+        $cnt = count($newInfo);
 
-        $array = merge_array($idArray, $contact_infoArray);
+        $class = "Contact" . $this->db->underscoreToCamel($type);
+
+        $tempInfo = new $class($this->db, -1, $this->id);
+        $oldInfo = empty($oldInfoIn) ? $tempInfo->{"get_all_contact_{$type}"}() : $oldInfoIn;
+
+        $array = array_merge($newInfo, $oldInfo);
 
         foreach ($array as $i => $contact_info) {
             if (preg_match('/^(home|work|cell)/', $i) || is_array($contact_info)) {
-                $this->update_contact_info($type, $contact_infoArray, $idArray, $i);
+                foreach ($contact_info as $info) {
+                    $tempArray[] = $info;
+                }
+            } elseif (count($tempArray) && $cnt < 1) {
+                continue;
+            } elseif ($cnt > 0 && $contact_info->id > 0) {
+                $contact_info_ids[] = $contact_info->id;
+                $contact_info->{"update_contact_{$type}"}();
             } elseif ($cnt > 0) {
-                $contact_info_ids[] = !is_array($contact_info) && $contact_info->id > 0 ? $contact_info->id : $contact_info;
-            } elseif ($cnt < 1) {
-                $contact_info->{!in_array($contact_info->id, $contact_info_ids) || !isset($contact_info_ids) || empty($contact_info_ids) ? "delete_contact_{$type}" : "update_contact_{$type}"}();
-            } else {
-                $contact_info->create_contact_{$type}();
+                $contact_info->{"create_contact_{$type}"}();
+            } elseif ($cnt < 1 && !in_array($contact_info->id, $contact_info_ids)) {
+                $contact_info->{"delete_contact_{$type}"}();
             }
             --$cnt;
         }
 
-        return $this->{$type};
+        return empty($tempArray) ? $this->{$type} : $this->update_contact_info($type, $tempArray, $oldInfo);
     }
 
     public function delete_contact_info($contact_info) {
@@ -186,16 +195,18 @@ class Contact {
 
     public function get_as_json($array = null) {
         $ob_vars = is_array($array) ? $array : get_object_vars($this);
-        foreach ($ob_vars as $prop => &$val) {
+        if (isset($ob_vars['db'])) {
+            unset($ob_vars['db']);
+        }
+        foreach ($ob_vars as &$val) {
             if (is_array($val)) {
                 $val = $this->get_as_json($val);
             } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
                 $val = $val->get_as_json();
-            } elseif ($prop != 'db') {
-                $val = $this->{$val};
             }
         }
-        return json_encode($ob_vars);
+        //return json_encode($ob_vars);
+        return $ob_vars;
     }
 
     public function get_all_contacts($summary = true) {
@@ -211,7 +222,15 @@ class Contact {
     }
 
     public function get_contact() {
-        $contact = isset($this->id) && $this->id > 0 ? $this->retrieve_contact_by_id($this->id, false) : end($this->search_contact());
+        $contact = new Contact($this->db);
+        if (isset($this->id) && $this->id > 0) {
+            $contact = $this->retrieve_contact_by_id($this->id, false);
+        } else {
+            $contacts = $this->search_contact();
+            if (is_array($contacts)) {
+                $contact = end($contacts);
+            }
+        }
 
         foreach (get_object_vars($contact) as $prop => $val) {
             if ($prop !== 'db') {
@@ -245,27 +264,30 @@ class Contact {
         if (!empty($have_value)) {
             $table = $this->db->camelToUnderscore(get_class($this));
             $have = implode(" AND ", $have_value);
-            echo $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
+            $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
 
             while ($row = $this->db->select_assoc($query)) {
                 $contact_ids[] = $row['id'];
             }
         }
-
         return $only_contact ? $contact_ids : $this->search_contact_id_by_contact_info('phone_number', $this->search_contact_id_by_contact_info('address', $contact_ids));
     }
 
     private function search_contact_id_by_contact_info($type, $contact_ids = array(), $arrayIn = null) {
         $array = is_array($arrayIn) ? $arrayIn : $this->{$type};
+        $ids = array();
         if (isset($array) && !empty($array)) {
-            $ids = array();
             foreach ($array as $contact_info) {
                 if (isset($contact_info) && !empty($contact_info)) {
-                    $ids = is_array($contact_info) ? $this->search_contact_id_by_contact_info($type, $contact_ids, $contact_info) : $contact_info->get_all_contact_{$type}(true);
+                    $ids = is_array($contact_info) ? $this->search_contact_id_by_contact_info($type, $contact_ids, $contact_info) : $contact_info->{"get_all_contact_{$type}"}(true);
                 }
             }
         }
-        return empty($contact_ids) ? $ids : array_intersect($contact_ids, $ids);
+        if (!empty($ids)) {
+            return empty($contact_ids) ? $ids : array_intersect($contact_ids, $ids);
+        } else {
+            return $contact_ids;
+        }
     }
 
     private function retrieve_contacts_by_ids($contact_ids = array(), $summary = true) {
@@ -280,10 +302,10 @@ class Contact {
         return $contacts;
     }
 
-    private function retrieve_contact_by_id($contact_idIn, $summary = true) {
+    private function retrieve_contact_by_id($idIn, $summary = true, $getMultiArray = false) {
         $table = $this->db->camelToUnderscore(get_class($this));
         $id = isset($idIn) ? $idIn : $this->id;
-        $columns = $values = array();
+        $columns = $values = $numbers = array();
 
         foreach (get_object_vars($this) as $prop => $val) {
             if (!preg_match('/^(db|address|phone_number|email|notes)/', $prop) || (!$summary && preg_match('/^(email|notes)/', $prop))) {
@@ -294,12 +316,24 @@ class Contact {
         $row = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id`={$id}");
 
         if (!$summary) {
-            $row['address'] = new ContactAddress(-1, $contact_id);
-            $row['phone_number'] = new ContactPhoneNumber(-1, $contact_id);
+            $address = new ContactAddress($this->db, -1, $id);
+            $row['address'] = $address->get_all_contact_address();
+            $phone_number = new ContactPhoneNumber($this->db, -1, $id);
+            $phone_numbers = $phone_number->get_all_contact_phone_number();
+            $row['phone_number'] = $phone_numbers;
+            if ($getMultiArray) {
+                foreach ($phone_numbers as $phone) {
+                    if (!isset($numbers[$phone->phone_type])) {
+                        $numbers[$phone->phone_type] = array();
+                    }
+                    $numbers[$phone->phone_type][] = $phone;
+                }
+                $row['phone_number'] = $numbers;
+            }
         }
 
-        foreach (get_object_vars($this) as $prop => $val) {
-            $values[] = isset($row[$prop]) ? $row[$prop] : $val;
+        foreach (get_object_vars($this) as $prop => &$val) {
+            $values[$prop] = isset($row[$prop]) ? $row[$prop] : $val;
         }
 
         $reflect = new ReflectionClass($this);
@@ -322,14 +356,14 @@ class Contact {
         $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($val != $orig_cols[$prop] && !preg_match('/^db|address|phone_number/', $prop)) {
+            if (!preg_match('/^db|address|phone_number/', $prop) && $val != $orig_cols[$prop]) {
                 $changed_col[$prop] = $val;
                 $GLOBALS['tracking']->add_event("Modified {$this->first_name} {$this->middle_name} {$this->last_name} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->id);
             }
         }
 
         foreach ($changed_col as $prop => $val) {
-            if ((!isset($val) || empty($val) || $val < 1) && preg_match('/^(id|first_name|last_name)/', $prop)) {
+            if ((!isset($val) || empty($val)) && preg_match('/^(id|first_name|last_name)/', $prop)) {
                 return null;
             }
             $set_to[] = "`{$prop}` = '{$val}'";
@@ -409,9 +443,9 @@ class ContactAddress {
         foreach (get_object_vars($this) as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif ($prop !== 'db' && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
+            } elseif ($prop !== 'db') {
                 $this->{$prop} = "";
             }
             ++$i;
@@ -426,7 +460,9 @@ class ContactAddress {
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
-            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to {$value}", 'ADDRESS');
+            }
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -437,7 +473,7 @@ class ContactAddress {
         }
         $columns = $values = array();
         foreach (get_object_vars($this) as $prop => $val) {
-            if (!preg_match('/^db|id/', $prop)) {
+            if (!preg_match('/^(db|id)/', $prop)) {
                 $columns[] = "`{$prop}`";
                 $values[] = "'{$val}'";
             }
@@ -452,32 +488,31 @@ class ContactAddress {
 
     public function get_as_json($array = null) {
         $ob_vars = is_array($array) ? $array : get_object_vars($this);
-        foreach ($ob_vars as $prop => &$val) {
+        if (isset($ob_vars['db'])) {
+            unset($ob_vars['db']);
+        }
+        foreach ($ob_vars as &$val) {
             if (is_array($val)) {
                 $val = $this->get_as_json($val);
             } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
                 $val = $val->get_as_json();
-            } elseif ($prop != 'db') {
-                $val = $this->{$val};
             }
         }
-        return json_encode($ob_vars);
+        //return json_encode($ob_vars);
+        return $ob_vars;
     }
 
     public function get_all_contact_address($contact_ids_only = false) {
         $addresses = isset($this->id) && $this->id > 0 ? $this->retrieve_address_by_id() : $this->search_contact_address();
-
         if (!$contact_ids_only) {
             return $addresses;
         }
-
         $contact_ids = array();
         foreach ($addresses as $address) {
             if ($address->contact_id > 0) {
                 $contact_ids[] = $address->contact_id;
             }
         }
-
         return $contact_ids;
     }
 
@@ -497,52 +532,27 @@ class ContactAddress {
         return $this;
     }
 
-    private function search_contact_ids($nameIn = "", $only_contact = false) {
-        $name = $this->db->sanitizeInput($nameIn);
-        $contact_ids = $have_value = array();
-
-        foreach (get_object_vars($this) as $prop => $val) {
-            if (!empty($name) && $prop === 'first_name') {
-                $have_value[] = "MATCH(`first_name`,`middle_name`,`last_name`) AGAINST('{$name}')";
-            } elseif ((!preg_match('/^(db|id|first_name|middle_name|last_name)/', $prop) || (empty($name) && preg_match('/^(first_name|middle_name|last_name)/', $prop))) && isset($val) && !empty($val)) {
-                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
-            }
-        }
-
-        if (!empty($have_value)) {
-            $table = $this->db->camelToUnderscore(get_class($this));
-            $have = implode(" AND ", $have_value);
-            $query = "SELECT `id` FROM `{$table}` WHERE {$have}";
-
-            while ($row = $this->db->select_assoc($query)) {
-                $contact_ids[] = $row['id'];
-            }
-        }
-
-        return $only_contact ? $contact_ids : $this->search_contact_id_by_contact_info('phone_number', $this->search_contact_id_by_contact_info('address', $contact_ids));
-    }
-
     private function search_contact_address() {
         $addresses = $need_value = $have_value = array();
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if (!preg_match('/^(db|id)/', $prop) && isset($val) && !empty($val)) {
-                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
-            } elseif ($prop !== 'db') {
+            if (!preg_match('/^(db|id|contact_id)/', $prop) && isset($val) && !empty($val) || ($prop === 'contact_id' && $val > 0)) {
+                $have_value[] = $prop === 'contact_id' ? "`{$prop}` = {$val}" : "`{$prop}` LIKE '%{$val}%'";
+            } elseif (!preg_match('/^(db|id)/', $prop)) {
                 $need_value[] = "`{$prop}`";
             }
         }
 
         if (empty($have_value)) {
-            return null;
+            return $addresses;
         }
         $table = $this->db->camelToUnderscore(get_class($this));
         $have = implode(" AND ", $have_value);
-        $needs = empty($need_value) ? "" : ", " . implode(", ", $have_value);
+        $needs = empty($need_value) ? "" : ", " . implode(", ", $need_value);
 
         while ($row = $this->db->select_assoc("SELECT `id`{$needs} FROM `{$table}` WHERE {$have}")) {
             $values = array();
-            foreach (get_object_vars($this) as $prop => $val) {
+            foreach (get_object_vars($this) as $prop => &$val) {
                 $values[] = isset($row[$prop]) ? $row[$prop] : $val;
             }
             $reflect = new ReflectionClass($this);
@@ -588,7 +598,7 @@ class ContactAddress {
         $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($val != $orig_cols[$prop] && $prop !== 'db') {
+            if ($prop !== 'db' && $val != $orig_cols[$prop]) {
                 $changed_col[$prop] = $val;
                 $GLOBALS['tracking']->add_event("Modified {$this->street}, {$this->city}, {$this->province}, {$this->country}, {$this->postal_code} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->contact_id);
             }
@@ -637,9 +647,9 @@ class ContactPhoneNumber {
         foreach (get_object_vars($this) as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
+            } elseif ($prop !== 'db' && $i < $count && isset($args[$i]) && !empty($args[$i])) {
                 $this->set($prop, $args[$i]);
-            } elseif (!preg_match('/^(db|id|contact_id)/', $prop)) {
+            } elseif ($prop !== 'db') {
                 $this->{$prop} = "";
             }
             ++$i;
@@ -654,7 +664,9 @@ class ContactPhoneNumber {
 
     public function set($property, $value) {
         if (property_exists($this, $property) && $property !== 'db') {
-            $this->db->consoleOut("Setting {$property} to {$value}", 'PHP');
+            if ($this->db->testing || !$this->db->production) {
+                $this->db->consoleOut("Setting {$property} to {$value}", 'PHONE');
+            }
             $this->{$property} = $this->db->sanitizeInput($value);
         }
     }
@@ -665,7 +677,7 @@ class ContactPhoneNumber {
         }
         $columns = $values = array();
         foreach (get_object_vars($this) as $prop => $val) {
-            if (!preg_match('/^db|id/', $prop)) {
+            if (!preg_match('/^(db|id)/', $prop)) {
                 $columns[] = "`{$prop}`";
                 $values[] = "'{$val}'";
             }
@@ -680,16 +692,18 @@ class ContactPhoneNumber {
 
     public function get_as_json($array = null) {
         $ob_vars = is_array($array) ? $array : get_object_vars($this);
-        foreach ($ob_vars as $prop => &$val) {
+        if (isset($ob_vars['db'])) {
+            unset($ob_vars['db']);
+        }
+        foreach ($ob_vars as &$val) {
             if (is_array($val)) {
                 $val = $this->get_as_json($val);
             } elseif (is_object($val) && method_exists($val, 'get_as_json')) {
                 $val = $val->get_as_json();
-            } elseif ($prop != 'db') {
-                $val = $this->{$val};
             }
         }
-        return json_encode($ob_vars);
+        //return json_encode($ob_vars);
+        return $ob_vars;
     }
 
     public function get_all_contact_phone_number($contact_ids_only = false) {
@@ -722,15 +736,15 @@ class ContactPhoneNumber {
         $phone_numbers = $have_value = $need_value = array();
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if (!preg_match('/^(db|id)/', $prop) && isset($val) && (!empty($val) || $val > 0)) {
-                $have_value[] = "`{$prop}` LIKE '%{$val}%'";
-            } elseif ($prop !== 'db') {
+            if (!preg_match('/^(db|id|contact_id)/', $prop) && isset($val) && (!empty($val) || $val > 0) || ($prop === 'contact_id' && $val > 0)) {
+                $have_value[] = $prop === 'contact_id' ? "`{$prop}` = {$val}" : "`{$prop}` LIKE '%{$val}%'";
+            } elseif (!preg_match('/^(db|id)/', $prop)) {
                 $need_value[] = "`{$prop}`";
             }
         }
 
         if (empty($have_value)) {
-            return null;
+            return $phone_numbers;
         }
 
         $table = $this->db->camelToUnderscore(get_class($this));
@@ -739,7 +753,7 @@ class ContactPhoneNumber {
 
         while ($row = $this->db->select_assoc("SELECT `id`{$needs} FROM `{$table}` WHERE {$have}")) {
             $values = array();
-            foreach (get_object_vars($this) as $prop => $val) {
+            foreach (get_object_vars($this) as $prop => &$val) {
                 $values[] = isset($row[$prop]) ? $row[$prop] : $val;
             }
             $reflect = new ReflectionClass($this);
@@ -783,7 +797,7 @@ class ContactPhoneNumber {
         $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
 
         foreach (get_object_vars($this) as $prop => $val) {
-            if ($val != $orig_cols[$prop] && $prop !== 'db') {
+            if ($prop !== 'db' && $val != $orig_cols[$prop]) {
                 $changed_col[$prop] = $val;
                 $GLOBALS['tracking']->add_event("Modified {$this->phone_number} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->contact_id);
             }
