@@ -13,13 +13,14 @@ class Tracking {
     private $class_id;
 
     public function __construct(&$db) {
+        $ob_vars = get_object_vars($this);
         $args = func_get_args();
         $count = count($args);
         $i = 0;
         $this->id = -1;
         $this->date_time = date('m/d/y h:i:s', time());
 
-        foreach (get_object_vars($this) as $prop => $val) {
+        foreach ($ob_vars as $prop => $val) {
             if ($prop === 'db' && $args[$i] instanceof DBConnect) {
                 $this->db = $db;
             } elseif (!preg_match('/^(db|id|date_time)/', $prop) && $i < $count && isset($args[$i]) && !empty($args[$i])) {
@@ -78,9 +79,10 @@ class Tracking {
     }
 
     public function get_all_events($limitTemp = 0, $offsetTemp = 0, $whereTemp = "", $orderByTemp = "`date_time`", $directionTemp = "DESC") {
+        $ob_vars = get_object_vars($this);
         $vars = $logs = array();
 
-        foreach (get_object_vars($this) as $var => $val) {
+        foreach ($ob_vars as $var => $val) {
             $vars[] = $var;
         }
 
@@ -102,11 +104,12 @@ class Tracking {
     }
 
     public function get_event() {
+        $ob_vars = get_object_vars($this);
         $logs = $have_value = $need_value = array();
         $args = func_get_args();
         $i = -1;
 
-        foreach (get_object_vars($this) as $prop => $val) {
+        foreach ($ob_vars as $prop => $val) {
             if (!preg_match('/^(db|id)/', $prop) && ++$i < count($args) && isset($args[$i]) && !empty($args[$i])) {
                 $have_value[] = "`{$prop}` LIKE '%{$this->db->sanitizeInput($args[$i])}%'";
             } elseif ($prop !== 'db') {

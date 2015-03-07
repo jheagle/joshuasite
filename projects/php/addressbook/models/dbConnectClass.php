@@ -16,6 +16,8 @@ class DBConnect {
         if (($hostname === 'localhost' || empty($hostname)) && empty($database) && ($username === 'root' || empty($username)) && empty($password)) {
             include_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/resources/dbInfo.php');
         }
+//        $testing = true;
+//        $production = false;
         $this->database = $database;
         $this->testing = $testing;
         $this->production = $production;
@@ -40,7 +42,9 @@ class DBConnect {
     }
 
     public function __destruct() {
-        
+        if ($this->testing || !$this->production) {
+            $this->consoleOut("Completed {$this->queries} Queries");
+        }
     }
 
     final public static function instantiateDB($hostname = 'localhost', $database = '', $username = 'root', $password = '', $testing = true, $production = false) {
@@ -125,27 +129,35 @@ class DBConnect {
         if (empty($this->result) || $queryRaw !== $this->queryRaw) {
             $this->query($queryRaw, 'select');
         }
-        return $this->pdoInstance[$this->database] ? $this->result->fetch(PDO::FETCH_ASSOC) : $this->result;
+        return $this->pdoInstance[$this->database] && $this->result ? $this->result->fetch(PDO::FETCH_ASSOC) : $this->result;
     }
 
     public function select_num($queryRaw = '') {
-        $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_NUM) : $result;
+        if (empty($this->result) || $queryRaw !== $this->queryRaw) {
+            $this->query($queryRaw, 'select');
+        }
+        return $this->pdoInstance[$this->database] && $this->result ? $this->result->fetch(PDO::FETCH_NUM) : $this->result;
     }
 
     public function select_both($queryRaw = '') {
-        $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_BOTH) : $result;
+        if (empty($this->result) || $queryRaw !== $this->queryRaw) {
+            $this->query($queryRaw, 'select');
+        }
+        return $this->pdoInstance[$this->database] && $this->result ? $this->result->fetch(PDO::FETCH_BOTH) : $this->result;
     }
 
     public function select_object($queryRaw = '') {
-        $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch(PDO::FETCH_OBJECT) : $result;
+        if (empty($this->result) || $queryRaw !== $this->queryRaw) {
+            $this->query($queryRaw, 'select');
+        }
+        return $this->pdoInstance[$this->database] && $this->result ? $this->result->fetch(PDO::FETCH_OBJECT) : $this->result;
     }
 
     public function select_lazy($queryRaw = '') {
-        $result = $this->query($queryRaw, 'select');
-        return $this->pdoInstance[$this->database] && !empty($result) ? $result->fetch($this->pdoInstance[$this->database]->FETCH_LAZY) : $result;
+        if (empty($this->result) || $queryRaw !== $this->queryRaw) {
+            $this->query($queryRaw, 'select');
+        }
+        return $this->pdoInstance[$this->database] && $this->result ? $result->fetch($this->pdoInstance[$this->database]->FETCH_LAZY) : $result;
     }
 
     private function queryValidation($queryRaw, $type) {
@@ -208,11 +220,21 @@ class DBConnect {
         if (is_array($input)) {
             $new_input = array();
             foreach ($input as $key => $value) {
-                $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($value), ENT_HTML5, 'UTF-8');
+                /*
+                 * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
+                  $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($value), ENT_HTML5, 'UTF-8');
+                 * 
+                 */
+                $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_QUOTES, 'UTF-8')) : html_entity_decode(trim($value), ENT_QUOTES, 'UTF-8');
             }
             return $new_input;
         }
-        return $escape ? addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($input), ENT_HTML5, 'UTF-8');
+        /*
+         * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
+          return $escape ? addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($input), ENT_HTML5, 'UTF-8');
+         * 
+         */
+        return $escape ? addslashes(html_entity_decode(trim($input), ENT_QUOTES, 'UTF-8')) : html_entity_decode(trim($input), ENT_QUOTES, 'UTF-8');
     }
 
     public function sanitizeOutput($output) {
@@ -222,12 +244,22 @@ class DBConnect {
                 if (is_array($value)) {
                     $new_output[$key] = $this->sanitizeOutput($value);
                 } else {
-                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
+                    /*
+                     * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
+                      $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
+                     * 
+                     */
+                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_QUOTES, 'UTF-8', false));
                 }
             }
             return $new_output;
         }
-        return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
+        /*
+         * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
+          return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
+         * 
+         */
+        return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_QUOTES, 'UTF-8', false));
     }
 
     public function camelToUnderscore($input) {
