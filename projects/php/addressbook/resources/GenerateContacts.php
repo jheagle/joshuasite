@@ -1,10 +1,11 @@
 <?php
 
+$screenOut = true;
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbConnectClass.php');
-$db = DBConnect::instantiateDB('', '', '', '', false, true);
+$db = DBConnect::instantiateDB('', '', '', '', false, false);
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
 
-generate_customers(1000000);
+generate_customers(10000);
 
 function generate_customers($amount = 10) {
     global $db;
@@ -25,7 +26,7 @@ function generate_customers($amount = 10) {
         $customer = new Contact($db, -1, $first_name, $middle_name, $last_name, $address, $phones, generate_email($first_name, $last_name), "");
         $customer->create_contact();
     }
-    echo "Completed Creating {$amount} Contacts";
+    echo "Completed Creating {$amount} Contacts<br>";
 }
 
 function generate_street($seed) {

@@ -365,7 +365,7 @@ class Contact {
         $cols = implode(',', $columns);
         $orig_cols = $this->db->select_assoc("SELECT {$cols} FROM `{$table}` WHERE `id` = {$this->id}");
 
-        foreach ($ob_vars($this) as $prop => $val) {
+        foreach ($ob_vars as $prop => $val) {
             if (!preg_match('/^db|address|phone_number/', $prop) && $val != $orig_cols[$prop]) {
                 $changed_col[$prop] = $val;
                 $GLOBALS['tracking']->add_event("Modified {$this->first_name} {$this->middle_name} {$this->last_name} {$prop} from {$orig_cols[$prop]} to {$val}", $this, $this->id);
@@ -379,8 +379,11 @@ class Contact {
             $set_to[] = "`{$prop}` = '{$val}'";
         }
 
-        $set = implode(',', $set_to);
-        $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id`={$this->id}");
+        if (!empty($set_to)) {
+            $set = implode(',', $set_to);
+            $this->db->update("UPDATE `{$table}` SET {$set} WHERE `id`={$this->id}");
+        }
+
         $this->update_contact_info('address');
         $this->update_contact_info('phone_number');
 

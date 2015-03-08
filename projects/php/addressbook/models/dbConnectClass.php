@@ -1,5 +1,7 @@
 <?php
 
+//$screenOut = true;
+
 class DBConnect {
 
     protected static $instance;
@@ -211,9 +213,14 @@ class DBConnect {
     }
 
     public function consoleOut($outputIn, $typeIn = 'DB') {
+        global $screenOut;
         $output = is_array($outputIn) || is_object($outputIn) ? addslashes(json_encode($outputIn)) : addslashes($outputIn);
         $type = addslashes($typeIn);
-        echo "<script>console.log(\"{$type}: {$output}\")</script>";
+        if (isset($screenOut) && $screenOut) {
+            echo "{$type}: {$output}|\r\n<br>";
+        } else {
+            echo "<script>console.log(\"{$type}: {$output}\")</script>";
+        }
     }
 
     public function sanitizeInput($input, $escape = true) {
