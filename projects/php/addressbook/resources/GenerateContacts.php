@@ -5,7 +5,12 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/dbCon
 $db = DBConnect::instantiateDB('', '', '', '', false, false);
 require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/ContactClass.php');
 
-generate_customers(10000);
+/*
+ * Cannot have more than 9400 contacts my lowsy shared hosting does not offer enough memory to support more
+  generate_customers(10000);
+ * 
+ */
+generate_customers(9400);
 
 function generate_customers($amount = 10) {
     global $db;
