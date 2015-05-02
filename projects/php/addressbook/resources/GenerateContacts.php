@@ -10,10 +10,14 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/Conta
   generate_customers(10000);
  * 
  */
-generate_customers(9400);
+generate_customers(1000);
 
 function generate_customers($amount = 10) {
     global $db;
+    $db->destroy("TRUNCATE TABLE `contact_phone_number`");
+    $db->destroy("TRUNCATE TABLE `contact_address`");
+    $db->destroy("TRUNCATE TABLE `contact`");
+    $db->destroy("TRUNCATE TABLE `tracking`");
     for ($i = 0; $i < $amount; ++$i) {
         $address = array();
         $address[] = new ContactAddress($db, -1, -1, generate_street($i), generate_city(), generate_province($i), generate_country($i), generate_postal($i));
