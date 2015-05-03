@@ -14,10 +14,53 @@ generate_customers(1000);
 
 function generate_customers($amount = 10) {
     global $db;
-    $db->destroy("TRUNCATE TABLE `contact_phone_number`");
-    $db->destroy("TRUNCATE TABLE `contact_address`");
-    $db->destroy("TRUNCATE TABLE `contact`");
-    $db->destroy("TRUNCATE TABLE `tracking`");
+//    $db->destroy("TRUNCATE TABLE `contact_phone_number`");
+//    $db->destroy("TRUNCATE TABLE `contact_address`");
+//    $db->destroy("TRUNCATE TABLE `contact`");
+//    $db->destroy("TRUNCATE TABLE `tracking`");
+    $db->destroy("DROP TABLE `contact_phone_number`");
+    $db->destroy("DROP TABLE `contact_address`");
+    $db->destroy("DROP TABLE `contact`");
+    $db->destroy("DROP TABLE `tracking`");
+    $db->build("CREATE TABLE IF NOT EXISTS `joshuaaddressbook`.`contact` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `first_name` VARCHAR(40) NOT NULL DEFAULT '',
+    `middle_name` VARCHAR(40) NOT NULL DEFAULT '',
+    `last_name` VARCHAR(40) NOT NULL DEFAULT '',
+    `notes` BLOB,
+    `email` VARCHAR(60) NOT NULL DEFAULT '',
+    PRIMARY KEY (`id`),
+    INDEX `full_name` (`first_name`,`middle_name`,`last_name`),
+    FULLTEXT `name` (`first_name`,`middle_name`,`last_name`)    
+) ENGINE=InnoDB");
+    $db->build("CREATE TABLE IF NOT EXISTS `joshuaaddressbook`.`contact_address` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `contact_id` INT NOT NULL,
+    `street` VARCHAR(120) NOT NULL DEFAULT '',
+    `city` VARCHAR(40) NOT NULL DEFAULT '',
+    `province` VARCHAR(6) NOT NULL DEFAULT '',
+    `country` VARCHAR(40) NOT NULL DEFAULT '',
+    `postal_code` VARCHAR(10) NOT NULL DEFAULT '',
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`contact_id`) REFERENCES `contact`(`id`)
+) ENGINE=InnoDB");
+    $db->build("CREATE TABLE IF NOT EXISTS `joshuaaddressbook`.`contact_phone_number` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `contact_id` INT NOT NULL,
+    `phone_type` VARCHAR(8) NOT NULL DEFAULT '',
+    `phone_number` VARCHAR(20) NOT NULL DEFAULT '',
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`contact_id`) REFERENCES `contact`(`id`)
+) ENGINE=InnoDB");
+    $db->build("CREATE TABLE IF NOT EXISTS `joshuaaddressbook`.`tracking` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `date_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `app_user` VARCHAR(60) NOT NULL DEFAULT '',
+    `action` VARCHAR(120) NOT NULL DEFAULT '',
+    `acting_class` VARCHAR(60) NOT NULL DEFAULT '',
+    `class_id` INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB");
     for ($i = 0; $i < $amount; ++$i) {
         $address = array();
         $address[] = new ContactAddress($db, -1, -1, generate_street($i), generate_city(), generate_province($i), generate_country($i), generate_postal($i));
