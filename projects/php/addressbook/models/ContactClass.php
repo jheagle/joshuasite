@@ -188,8 +188,7 @@ class Contact {
         $cols = implode(',', $columns);
         $vals = implode(',', $values);
         $this->db->insert("INSERT INTO `{$table}` ({$cols}) VALUES ({$vals})");
-//        $this->set('id', end($this->search_contact_ids(null, true)));
-        $this->set('id', $this->db->lastInsertId());
+        $this->set('id', end($this->search_contact_ids(null, true)));
         $GLOBALS['tracking']->add_event("Created {$this->first_name} {$this->middle_name} {$this->last_name}", $this, $this->id);
         $this->create_contact_info('address');
         $this->create_contact_info('phone_number');

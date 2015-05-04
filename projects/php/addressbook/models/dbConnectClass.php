@@ -63,13 +63,6 @@ class DBConnect {
         
     }
 
-    public function lastInsertId($name = '') {
-        if ($this->pdoInstance[$this->database]) {
-            return $this->pdoInstance[$this->database]->lastInsertId($name);
-        }
-        return 0;
-    }
-
     private function exec($queryRaw = '', $type = 'insert') {
         $count = 0;
         $query = empty($queryRaw) ? $this->query : $this->queryValidation($queryRaw, $type);
@@ -106,14 +99,6 @@ class DBConnect {
 
     public function delete($queryRaw = '') {
         return $this->exec($queryRaw, 'delete');
-    }
-
-    public function build($queryRaw = '') {
-        return $this->exec($queryRaw, 'build');
-    }
-
-    public function destroy($queryRaw = '') {
-        return $this->exec($queryRaw, 'destroy');
     }
 
     private function query($queryRaw = '', $type = 'select') {
