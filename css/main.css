@@ -38,7 +38,15 @@ article, aside, figure, footer, header, hgroup, menu, nav, section {
 html, body {
     padding: 0;
     margin: 0;
-    background-color:#d4d4d4;
+}
+
+html {
+    background: url(images/bg.jpg) no-repeat center center fixed; 
+    background: #d4d4d4 no-repeat center center fixed; 
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
 }
 
 h1 {
