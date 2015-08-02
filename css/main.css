@@ -1246,7 +1246,8 @@ select {
     }
 }
 
-@media (min-width: 642px) {
+/* previously 642px*/
+@media (min-width: 655px) {
     .menu > li:first-child {
         margin-left: 5px;
         border-top-left-radius: 14px;
@@ -1258,7 +1259,7 @@ select {
         border-top-right-radius: 0;
         border-bottom-right-radius: 0;
     }
-
+/*
     .menu > li:nth-child(3) {
         margin-left: -2px;
         margin-right: 5px;
@@ -1272,6 +1273,15 @@ select {
         margin-left: 5px;
         border-top-left-radius: 14px;
         border-bottom-left-radius: 14px;
+    }
+*/
+    .menu > li:last-child {
+        margin-left: -2px;
+        margin-right: 5px;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-top-right-radius: 14px;
+        border-bottom-right-radius: 14px;
     }
 }
 

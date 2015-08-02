@@ -227,21 +227,11 @@ class DBConnect {
         if (is_array($input)) {
             $new_input = array();
             foreach ($input as $key => $value) {
-                /*
-                 * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
-                  $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($value), ENT_HTML5, 'UTF-8');
-                 * 
-                 */
-                $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_QUOTES, 'UTF-8')) : html_entity_decode(trim($value), ENT_QUOTES, 'UTF-8');
+                $new_input[$key] = $escape ? addslashes(html_entity_decode(trim($value), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($value), ENT_HTML5, 'UTF-8');
             }
             return $new_input;
         }
-        /*
-         * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
-          return $escape ? addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($input), ENT_HTML5, 'UTF-8');
-         * 
-         */
-        return $escape ? addslashes(html_entity_decode(trim($input), ENT_QUOTES, 'UTF-8')) : html_entity_decode(trim($input), ENT_QUOTES, 'UTF-8');
+        return $escape ? addslashes(html_entity_decode(trim($input), ENT_HTML5, 'UTF-8')) : html_entity_decode(trim($input), ENT_HTML5, 'UTF-8');
     }
 
     public function sanitizeOutput($output) {
@@ -251,22 +241,12 @@ class DBConnect {
                 if (is_array($value)) {
                     $new_output[$key] = $this->sanitizeOutput($value);
                 } else {
-                    /*
-                     * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
-                      $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
-                     * 
-                     */
-                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_QUOTES, 'UTF-8', false));
+                    $new_output[$key] = stripslashes(htmlentities(str_replace('\r', '', $value), ENT_HTML5, 'UTF-8', false));
                 }
             }
             return $new_output;
         }
-        /*
-         * Cannot use this because the idiots at Network Solutions do not offer a server with a version of PHP higher than 5.3
-          return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
-         * 
-         */
-        return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_QUOTES, 'UTF-8', false));
+        return stripslashes(htmlentities(str_replace('\r', '', $output), ENT_HTML5, 'UTF-8', false));
     }
 
     public function camelToUnderscore($input) {

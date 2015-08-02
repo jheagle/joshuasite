@@ -10,7 +10,10 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/projects/php/addressbook/models/Conta
   generate_customers(10000);
  * 
  */
-generate_customers(9400);
+
+if (preg_match('/^192\.168\./', $ip)) {
+    generate_customers(9400);
+}
 
 function generate_customers($amount = 10) {
     global $db;
